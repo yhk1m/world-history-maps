@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"name": "콜카타", "name_en": "Kolkata", "category": "도시", "year": null, "coord_source": "실제 위치", "map_lon": 88.36047, "map_lat": 22.56744, "legend": "콜카타", "map_title": "영국의 벵골 분할령", "source": "미래엔 세계사 교과서 3권 169쪽", "volume": 3, "page": 169}, "geometry": {"type": "Point", "coordinates": [88.36, 22.57]}}]}
