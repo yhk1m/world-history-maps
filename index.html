@@ -116,9 +116,31 @@
 <section id="recipes" class="sec">
   <div class="sec-head"><span class="num">03</span><h2>Recipes</h2><p>이렇게 써 보세요</p></div>
 
+  <article class="recipe scen">
+    <div class="r-text">
+      <h3><span>A</span>시나리오 모핑 — 전쟁과 통일의 전개</h3>
+      <p>한 지도 안의 시점별 영역을 프레임으로 이어, 여러 세력이 함께 넓어지고 줄어드는 모습과 진격로를 차례로 보여 줍니다.</p>
+      <div class="chips" id="scChips" role="tablist" aria-label="시나리오"></div>
+      <div class="ctrl">
+        <button class="btn ghost" id="scPrev">이전</button>
+        <button class="btn" id="scPlay">재생</button>
+        <button class="btn ghost" id="scNext">다음</button>
+      </div>
+      <ul class="sc-legend" id="scLegend"></ul>
+      <pre class="code"><code>// 프레임마다 세력(key)별 영역 + 그 프레임의 진격로
+frames.forEach((f, i) =&gt; {
+  for (const key in f.areas)
+    morph(layer[key], frames[i - 1]?.areas[key], f.areas[key]);
+  drawRoutes(f.routes);   // stroke-dashoffset 으로 선을 그려 나감
+});</code></pre>
+    </div>
+    <figure class="r-demo"><svg id="scSvg" viewBox="0 0 760 500"></svg>
+      <figcaption><span class="sc-step" id="scStep"></span><span id="scCap"></span></figcaption></figure>
+  </article>
+
   <article class="recipe">
     <div class="r-text">
-      <h3><span>A</span>모핑 — 영역이 자라고 줄어드는 모습</h3>
+      <h3><span>B</span>모핑 — 같은 나라의 여러 판</h3>
       <p>같은 나라의 여러 판(시기별 영역)을 이어 붙이면 제국의 팽창과 축소를 애니메이션으로 보여 줄 수 있습니다. 나라별 모음에서 판이 둘 이상인 나라를 고르세요.</p>
       <div class="ctrl">
         <select id="mSel" aria-label="나라"></select>
@@ -137,7 +159,7 @@ d3.select('path').transition().duration(1600)
 
   <article class="recipe">
     <div class="r-text">
-      <h3><span>B</span>웹지도에 올리기 — Leaflet</h3>
+      <h3><span>C</span>웹지도에 올리기 — Leaflet</h3>
       <p>주소 하나로 GeoJSON 을 불러와 지도 위에 올립니다. <code>kind</code>·<code>category</code> 로 색을 나누면 범례가 됩니다.</p>
       <pre class="code"><code>const url = 'https://cdn.jsdelivr.net/gh/yhk1m/world-history-maps@main/'
   + 'data/maps/' + encodeURIComponent('1권_p050_로마 제국의 영역')
@@ -159,7 +181,7 @@ fetch(url).then(r =&gt; r.json()).then(fc =&gt; {
 
   <article class="recipe">
     <div class="r-text">
-      <h3><span>C</span>면적 재기 — 제국은 얼마나 넓었을까</h3>
+      <h3><span>D</span>면적 재기 — 제국은 얼마나 넓었을까</h3>
       <p>구면 면적을 계산해 판끼리 비교합니다. 아래 표는 고른 나라의 판별 면적을 이 페이지에서 바로 계산한 값입니다.</p>
       <pre class="code"><code># Python · geopandas
 import geopandas as gpd
@@ -172,7 +194,7 @@ print(g[['name', 'period', 'km2']].sort_values('km2'))</code></pre>
 
   <article class="recipe ideas">
     <div class="r-text">
-      <h3><span>D</span>수업에서</h3>
+      <h3><span>E</span>수업에서</h3>
       <ul class="idea-list">
         <li><b>겹쳐 보기</b> 로마·한·당의 최대 영역을 한 지도에 — 같은 시기, 다른 세계.</li>
         <li><b>길 따라가기</b> 알렉산드로스 원정로의 총 길이를 재고 하루 행군 거리를 추정.</li>

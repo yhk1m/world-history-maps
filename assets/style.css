@@ -162,3 +162,22 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
   .preview { grid-template-rows: 340px auto; }
   .timeline { max-height: 320px; }
 }
+
+/* scenario */
+.recipe.scen { grid-template-columns: minmax(300px, 1fr) 1.5fr; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.chips button { font: inherit; font-size: 13px; background: #fff; border: 1px solid var(--line); padding: 6px 11px; cursor: pointer; color: var(--ink-2); transition: all .15s; }
+.chips button:hover { border-color: var(--ink); color: var(--ink); }
+.chips button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--ink); }
+.btn.ghost:hover { background: var(--soft); }
+.sc-legend { list-style: none; padding: 0; margin: 0 0 18px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.sc-legend i { display: inline-block; width: 12px; height: 12px; border: 1.5px solid; margin-right: 6px; vertical-align: -1px; }
+.sc-legend i.rt { height: 0; width: 18px; border-width: 2px 0 0; }
+#scSvg .land { fill: #e3e1db; }
+#scSvg .static { stroke: none; opacity: .55; }
+#scSvg .lay { stroke-width: 1.4; stroke-linejoin: round; }
+#scSvg .route { fill: none; stroke: #111; stroke-width: 1.8; stroke-linecap: round; }
+#scSvg .route.old { opacity: .28; }
+.sc-step { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-right: 10px; }
+@media (max-width: 900px) { .recipe.scen { grid-template-columns: 1fr; } }

@@ -148,7 +148,7 @@
       const vs = groups[name].filter((v) => v.geometry);
       const rings = vs.map((v) => mainRing(v.geometry)).filter(Boolean);
       const fc = { type: 'FeatureCollection', features: rings.map((g) => ({ type: 'Feature', geometry: g })) };
-      const proj = d3.geoNaturalEarth1().fitExtent([[20, 20], [W - 20, H - 20]], fc);
+      const proj = d3.geoNaturalEarth1().rotate([-d3.geoCentroid(fc)[0], 0]).fitExtent([[20, 20], [W - 20, H - 20]], fc);
       const path = d3.geoPath(proj);
       landP.then((l) => l && landG.attr('d', path(l)));
       const ds = rings.map((g) => path(g));
@@ -178,6 +178,108 @@
       + '</tbody>';
   }
 
+
+  /* ---------- 시나리오 모핑 ---------- */
+  function scenarios(list) {
+    const svg = d3.select('#scSvg');
+    const W = 760, H = 500;
+    svg.append('defs').append('marker').attr('id', 'arw').attr('viewBox', '0 0 10 10').attr('refX', 8).attr('refY', 5)
+      .attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto-start-reverse')
+      .append('path').attr('d', 'M0,0 L10,5 L0,10 z').attr('fill', '#111');
+    const gLand = svg.append('path').attr('class', 'land');
+    const gStatic = svg.append('g');
+    const gLay = svg.append('g');
+    const gRoute = svg.append('g');
+    const chips = document.getElementById('scChips');
+    let cur = null, k = 0, playing = false, timer = null, path = null, layerPaths = {};
+
+    list.forEach((sc, i) => {
+      const b = document.createElement('button');
+      b.textContent = sc.title.replace(/\s[\d–]+$/, '');
+      b.addEventListener('click', () => { stop(); load(i); });
+      chips.appendChild(b);
+    });
+
+    function load(i) {
+      cur = list[i]; k = 0;
+      [...chips.children].forEach((b, j) => b.classList.toggle('on', j === i));
+      const all = [];
+      cur.frames.forEach((f) => Object.values(f.areas).forEach((g) => all.push({ type: 'Feature', geometry: rewind(g) })));
+      const fcAll = { type: 'FeatureCollection', features: all };
+      const c0 = d3.geoCentroid(fcAll);  // 날짜변경선 넘는 영역(태평양)도 잘리지 않게 중심 경도로 회전
+      const proj = d3.geoNaturalEarth1().rotate([-c0[0], 0]).fitExtent([[18, 18], [W - 18, H - 18]], fcAll);
+      path = d3.geoPath(proj);
+      landP.then((l) => l && gLand.attr('d', path(l)));
+      gStatic.selectAll('*').remove(); gLay.selectAll('*').remove(); gRoute.selectAll('*').remove();
+      (cur.static || []).forEach((st) => gStatic.append('path').attr('class', 'static').attr('fill', st.color).attr('d', path(rewind(st.geometry))));
+      layerPaths = {};
+      cur.layers.forEach((L0) => {
+        layerPaths[L0.key] = gLay.append('path').attr('class', 'lay').attr('fill', L0.color + '3d').attr('stroke', L0.color);
+      });
+      document.getElementById('scLegend').innerHTML = cur.layers.map((L0) => `<li><i style="border-color:${L0.color};background:${L0.color}3d"></i>${L0.label}</li>`).join('')
+        + ((cur.static || []).map((st) => `<li><i style="border-color:${st.color};background:${st.color}"></i>${st.label}</li>`).join(''))
+        + (cur.frames.some((f) => (f.routes || []).length) ? '<li><i class="rt" style="border-color:#111"></i>진격·원정로</li>' : '');
+      show(0, false);
+    }
+
+    function caption() {
+      document.getElementById('scStep').textContent = `${k + 1} / ${cur.frames.length}`;
+      document.getElementById('scCap').textContent = cur.frames[k].label;
+    }
+
+    function drawRoutes(f, animate) {
+      gRoute.selectAll('path.route').classed('old', true);
+      (f.routes || []).forEach((r, i) => {
+        const p = gRoute.append('path').attr('class', 'route').attr('d', path(r.geometry)).attr('marker-end', 'url(#arw)');
+        const len = p.node().getTotalLength ? p.node().getTotalLength() : 0;
+        if (animate && len) {
+          p.attr('stroke-dasharray', `${len} ${len}`).attr('stroke-dashoffset', len)
+            .transition().delay(i * 110).duration(900).ease(d3.easeCubicOut).attr('stroke-dashoffset', 0)
+            .on('end', function () { d3.select(this).attr('stroke-dasharray', null); });
+        }
+      });
+    }
+
+    function show(j, animate) {
+      const prev = cur.frames[k], next = cur.frames[j];
+      const dur = animate ? 1500 : 0;
+      cur.layers.forEach((L0) => {
+        const el = layerPaths[L0.key];
+        const gb = next.areas[L0.key];
+        const ga = prev.areas[L0.key];
+        if (!gb) { el.attr('d', null); return; }
+        const full = path(rewind(gb));
+        if (!animate || !ga || j === k) { el.attr('d', full); return; }
+        const t = flubber.interpolate(path(mainRing(ga)), path(mainRing(gb)), { maxSegmentLength: 3 });
+        el.interrupt().attr('d', path(mainRing(ga))).transition().duration(dur).ease(d3.easeCubicInOut)
+          .attrTween('d', () => t).on('end', () => el.attr('d', full));
+      });
+      if (j === 0) gRoute.selectAll('*').remove();
+      k = j; caption();
+      setTimeout(() => drawRoutes(next, animate), animate ? dur * 0.6 : 0);
+    }
+
+    function step(dir) {
+      const j = (k + dir + cur.frames.length) % cur.frames.length;
+      show(j, true);
+    }
+    function stop() { playing = false; clearTimeout(timer); document.getElementById('scPlay').textContent = '재생'; }
+    function loop() {
+      if (!playing) return;
+      step(1);
+      timer = setTimeout(loop, 3600);
+    }
+    document.getElementById('scPrev').addEventListener('click', () => { stop(); step(-1); });
+    document.getElementById('scNext').addEventListener('click', () => { stop(); step(1); });
+    document.getElementById('scPlay').addEventListener('click', () => {
+      if (playing) return stop();
+      playing = true; document.getElementById('scPlay').textContent = '멈춤';
+      if (k === cur.frames.length - 1) show(0, false);
+      timer = setTimeout(loop, 300);
+    });
+    load(0);
+  }
+
   /* ---------- 시작 ---------- */
   Promise.all([getJSON(DATA + 'index.json'), getJSON(DATA + 'lite/countries.json'), getJSON(DATA + 'lite/hero.json')])
     .then(([index, groups, heroList]) => {
@@ -190,6 +292,7 @@
       hero(heroList);
       explorer(index);
       recipes(groups);
+      getJSON(DATA + 'lite/scenarios.json').then(scenarios).catch((e) => console.error('[WHM] scenarios', e));
     })
     .catch((e) => console.error('[WHM]', e));
 })();
