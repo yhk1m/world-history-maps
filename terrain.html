@@ -44,6 +44,7 @@
   <nav>
     <a href="index.html#recipes">활용</a>
     <a href="terrain.html" aria-current="page">3D 지형</a>
+    <a href="admin.html">행정구역</a>
   </nav>
 </header>
 
@@ -59,6 +60,7 @@
       <button data-mode="country">현대 국가</button>
       <button data-mode="continent">대륙</button>
       <button data-mode="history">과거 영토</button>
+      <button data-mode="admin">행정구역</button>
     </div>
     <div id="paneDraw" class="t-pane"><p class="t-help">지도를 클릭해 점을 찍고, <b>오른쪽 클릭</b>(또는 더블클릭)으로 구역을 확정합니다. Esc 는 취소. 끌면 이동, 휠은 확대.</p></div>
     <div id="paneShape" class="t-pane" hidden>
@@ -83,6 +85,18 @@
       <ul id="countryList" class="t-list"></ul>
     </div>
     <div id="paneContinent" class="t-pane" hidden><ul id="continentList" class="t-list"></ul></div>
+    <div id="paneAdmin" class="t-pane" hidden>
+      <div class="t-admrow"><select id="admYear" class="t-q" aria-label="행정구역 연도"></select></div>
+      <div class="chips" id="admLevels" aria-label="행정구역 단위">
+        <button class="on" data-lv="sido">시·도</button>
+        <button data-lv="sigungu">시·군·구</button>
+        <button data-lv="region7">국토 7대 권역</button>
+        <button data-lv="regiontrad">전통 지역 구분</button>
+      </div>
+      <input id="admQ" class="t-q" type="search" placeholder="이름 (예: 강원, 수원시, 호남)">
+      <ul id="admList" class="t-list"></ul>
+      <p class="t-help">남한은 연도별, 북한은 현재 판입니다. <a href="admin.html">행정구역 탐색</a>에서 연도별 변화를 볼 수 있습니다.</p>
+    </div>
     <div id="paneHistory" class="t-pane" hidden>
       <input id="histQ" class="t-q" type="search" placeholder="영역 이름 (예: 고구려, 몽골, 로마)">
       <ul id="histList" class="t-list"></ul>
@@ -93,6 +107,11 @@
     <details class="t-sec" data-sec="2" open><summary><span>2</span>덮을 자료</summary>
     <select id="overMap" class="t-q" aria-label="덮을 교과서 지도"><option value="">교과서 지도 없음</option></select>
     <button id="wholeMap" class="btn ghost t-small" disabled>이 지도 전체를 구역으로</button>
+    <label class="t-file">행정구역 경계 덮기 <small>(연도는 1 의 행정구역 연도)</small>
+      <select id="admOver" class="t-q" aria-label="행정구역 경계 덮기">
+        <option value="">덮지 않음</option><option value="sido">시·도 경계</option><option value="sigungu">시·군·구 경계</option>
+        <option value="region7">국토 7대 권역</option><option value="regiontrad">전통 지역 구분</option>
+      </select></label>
     <label class="t-file">내 GeoJSON 덮기 <small>(크로키에서 저장한 파일 등)</small><input id="userGeo" type="file" accept=".geojson,.json,application/geo+json,application/json"></label>
     <p id="userGeoInfo" class="t-help" hidden><span></span> <button id="userGeoClear" class="t-link">빼기</button></p>
 

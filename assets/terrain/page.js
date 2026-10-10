@@ -38,7 +38,7 @@ const sel = createSelector($('selMap'), {
 });
 
 // 선택 방식 탭
-const panes = { draw: 'paneDraw', shape: 'paneShape', country: 'paneCountry', continent: 'paneContinent', history: 'paneHistory' };
+const panes = { draw: 'paneDraw', shape: 'paneShape', country: 'paneCountry', continent: 'paneContinent', history: 'paneHistory', admin: 'paneAdmin' };
 let tabMode = 'draw';
 const selModeOf = (m) => (m === 'shape' ? 'shape' : m === 'draw' ? 'draw' : 'pick');
 document.querySelectorAll('#modes button').forEach((b) => b.addEventListener('click', () => {
@@ -91,11 +91,56 @@ function boxAround(coordsLists, pad = 0.04) {
 
 // 덮을 자료: 교과서 지도 + 내 GeoJSON. 3D 가 있으면 바로 바꿔 덮는다(시나리오 재생 중에는 시나리오가 우선)
 async function overlayFor(bbox) {
-  const id = $('overMap').value;
+  const id = $('overMap').value, lv = $('admOver').value;
   const base = id ? prepareOverlay(await loadMap(id), bbox, PALETTE) : null;
+  // 행정구역: 시·도·시·군·구는 경계선만(fill:false), 권역은 색으로
+  const adm = lv && adminIdx ? prepareOverlay(await loadAdmin($('admYear').value, lv, true), bbox, PALETTE) : null;
   const mine = userFc ? prepareOverlay(userFc, bbox, PALETTE.slice(3)) : null;
-  return base || mine ? mergeOverlays(base, mine) : null;
+  return base || adm || mine ? mergeOverlays(adm, base, mine) : null;
 }
+
+// 행정구역(data/admin): 연도·단위별 판. 시·도·시·군·구는 북한 현재 판을 함께 싣는다
+let adminIdx = null;
+const adminCache = new Map();
+function loadAdmin(year, level, asOverlay = false) {
+  const key = `${year}:${level}:${asOverlay}`;
+  if (!adminCache.has(key)) {
+    const files = [adminIdx.files[year]['kr_' + level]];
+    if (level === 'sido' || level === 'sigungu') files.unshift(adminIdx.kp[level]);
+    const plain = level === 'sido' || level === 'sigungu';
+    adminCache.set(key, Promise.all(files.map((f) => getJSON(DATA + 'admin/' + f))).then((fcs) => ({
+      type: 'FeatureCollection',
+      features: fcs.flatMap((c, i) => c.features.map((f) => ({ f, kp: plain && i === 0 }))).map(({ f, kp }) => ({ type: 'Feature', geometry: f.geometry,
+        properties: { _t: 'area', name: (f.properties.full || f.properties.name) + (kp ? ' (북한)' : ''), ...(asOverlay && plain ? { fill: false, color: '#333333' } : {}) } })),
+    })));
+  }
+  return adminCache.get(key);
+}
+let admLevel = 'sido';
+async function renderAdminList() {
+  if (!adminIdx) return;
+  const fc = await loadAdmin($('admYear').value, admLevel);
+  const items = fc.features.map((f) => ({ label: f.properties.name, pick: () => sel.setRegion(f.geometry, f.properties.name) }));
+  const q = $('admQ');
+  const ul = $('admList');
+  const render = () => {
+    const t = q.value.trim();
+    const hits = items.filter((it) => !t || it.label.includes(t)).slice(0, 300);
+    ul.innerHTML = hits.map((it, i) => `<li><button data-i="${i}">${esc(it.label)}</button></li>`).join('');
+    ul.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      ul.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      hits[+b.dataset.i].pick();
+    }));
+  };
+  q.oninput = render;
+  render();
+}
+document.querySelectorAll('#admLevels button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#admLevels button').forEach((x) => x.classList.toggle('on', x === b));
+  admLevel = b.dataset.lv; renderAdminList();
+}));
+$('admYear').addEventListener('change', () => { renderAdminList(); refreshOverlay(); });
+$('admOver').addEventListener('change', () => refreshOverlay());
 async function refreshOverlay() {
   if (!viewer || !last || scen) return;
   last.overlay = await overlayFor(last.grid.bbox);
@@ -134,7 +179,9 @@ $('userGeo').addEventListener('change', async (e) => {
 });
 $('userGeoClear').addEventListener('click', () => { userFc = null; $('userGeoInfo').hidden = true; refreshOverlay(); });
 
-Promise.all([getJSON(DATA + 'index.json'), getJSON(DATA + 'lite/ne_countries.json'), getJSON(DATA + 'lite/korea_index.json'), getJSON(DATA + 'lite/scenarios.json')]).then(([world, ne, korea, scs]) => {
+Promise.all([getJSON(DATA + 'index.json'), getJSON(DATA + 'lite/ne_countries.json'), getJSON(DATA + 'lite/korea_index.json'), getJSON(DATA + 'lite/scenarios.json'), getJSON(DATA + 'admin/index.json').catch(() => null)]).then(([world, ne, korea, scs, adm]) => {
+  adminIdx = adm;
+  if (adm) { $('admYear').innerHTML = adm.years.slice().reverse().map((y) => `<option value="${y}">${y}년</option>`).join(''); renderAdminList(); }
   // 세계사 교과서 지도 + 한국사 시기별 영토를 한 목록으로(label = 목록·선택 상자에 보일 이름)
   world.maps.forEach((m) => { m.label = `${m.vol}권 ${m.page}쪽 · ${m.title}`; });
   korea.maps.forEach((m) => { m.label = `한국사 · ${m.title}`; });

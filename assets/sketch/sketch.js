@@ -11,6 +11,10 @@ const WIDTHS = { thin: 1.6, mid: 3, thick: 6 };
 const FONT = 'Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const $ = (id) => document.getElementById(id);
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
+// 자료 주소: 사이트 안에서는 data/, 이 코드를 떼어 다른 곳(파일로 열기 등)에서 쓰면 공개 CDN 으로 넘어간다
+const DATA = (typeof window !== 'undefined' && window.SA_DATA) || 'data/';
+const CDN = 'https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/';
+const getData = (path) => getJSON(DATA + path).catch(() => getJSON(CDN + path));
 const enc = (s) => s.split('/').map(encodeURIComponent).join('/');
 const store = createStore();
 const ls = {
@@ -71,7 +75,7 @@ function init() {
       const p = f.properties || {}, g = f.geometry;
       if (!g) continue;
       if (p._t === 'area') {
-        const ai = ci++, c = AREA_COLORS[ai % AREA_COLORS.length];   // 숨겨도 색 순서는 그대로
+        const ai = ci++, c = p.color || AREA_COLORS[ai % AREA_COLORS.length];   // 숨겨도 색 순서는 그대로
         if (hiddenAreas.has(ai)) continue;
         gMap.append('path').attr('d', path(rewind(g))).attr('fill', c).attr('fill-opacity', 0.16)
           .attr('stroke', c).attr('stroke-opacity', 0.7).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
@@ -129,10 +133,26 @@ function init() {
   }
 
   // 바탕 지도 바꾸기: 그리던 것은 지도별로 브라우저에 기억
+  // 행정구역 바탕(id = 'admin:<단위>:<연도>'): 연도 판 + (시·도·시·군·구면) 북한. 권역은 그 권역 색으로, 시·도·시·군·구는 회색 한 색
+  let adminIndex = null;
+  const ADMIN_LEVELS = { region7: '국토 7대 권역', regiontrad: '전통 지역 구분', sido: '시·도', sigungu: '시·군·구' };
+  async function loadAdmin(id) {
+    const [, level, year] = id.split(':');
+    adminIndex = adminIndex || await getData('admin/index.json');
+    const files = [adminIndex.files[year]['kr_' + level]];
+    if (level === 'sido' || level === 'sigungu') files.unshift(adminIndex.kp[level]);
+    const fcs = await Promise.all(files.map((f) => getData('admin/' + f)));
+    const plain = level === 'sido' || level === 'sigungu';
+    return { type: 'FeatureCollection', features: fcs.flatMap((c) => c.features).map((f) => ({
+      type: 'Feature', geometry: f.geometry,
+      properties: { _t: 'area', name: f.properties.full || f.properties.name, color: plain ? '#455a64' : undefined },
+    })) };
+  }
+
   async function setMap(id) {
     if (mapId !== null) ls.set('sa-sketch:' + mapId, store.dump());
     mapId = id;
-    fc = id ? await getJSON('data/lite/maps/' + enc(id) + '.json') : null;
+    fc = !id ? null : id.startsWith('admin:') ? await loadAdmin(id) : await getData('lite/maps/' + enc(id) + '.json');
     if (fc) {
       const lons = [], pts = [];
       const walk = (c) => { if (typeof c[0] === 'number') { lons.push(c[0]); pts.push(c); } else c.forEach(walk); };
@@ -170,7 +190,11 @@ function init() {
       lab.appendChild(document.createTextNode(label));
       box.appendChild(lab);
     };
-    areas.forEach((f, i) => item(f.properties.name || `영역 ${i + 1}`, AREA_COLORS[i % AREA_COLORS.length], !hiddenAreas.has(i),
+    if (areas.length > 30) {
+      // 시·군·구처럼 구역이 많으면 하나씩 고르지 않고 묶음으로 켜고 끈다
+      item(`구역 (${areas.length})`, areas[0].properties.color || AREA_COLORS[0], hiddenAreas.size === 0,
+        (on) => { hiddenAreas = on ? new Set() : new Set(areas.map((_, i) => i)); }, 'grp');
+    } else areas.forEach((f, i) => item(f.properties.name || `영역 ${i + 1}`, f.properties.color || AREA_COLORS[i % AREA_COLORS.length], !hiddenAreas.has(i),
       (on) => { if (on) hiddenAreas.delete(i); else hiddenAreas.add(i); }));
     if (nLine) item(`경로 (${nLine})`, null, showLines, (on) => { showLines = on; }, 'grp');
     if (nPt) item(`지점 (${nPt})`, null, showPoints, (on) => { showPoints = on; }, 'grp');
@@ -270,7 +294,13 @@ function init() {
   $('skRedo').addEventListener('click', () => store.redo());
   $('skClear').addEventListener('click', () => store.clear());
   $('skFit').addEventListener('click', () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
-  $('skMap').addEventListener('change', (e) => setMap(e.target.value));
+  const mapValue = () => {
+    const v = $('skMap').value, admin = v.startsWith('admin:');
+    if ($('skYear')) $('skYear').hidden = !admin;
+    return admin ? `${v}:${$('skYear').value}` : v;
+  };
+  $('skMap').addEventListener('change', () => setMap(mapValue()));
+  if ($('skYear')) $('skYear').addEventListener('change', () => setMap(mapValue()));
 
   const save = (name, blob) => {
     const a = document.createElement('a');
@@ -299,12 +329,14 @@ function init() {
   });
 
   // 바탕 지도 목록: 한국사 + 세계사 교과서
-  Promise.all([getJSON('data/index.json'), getJSON('data/lite/korea_index.json').catch(() => ({ maps: [] }))]).then(([world, korea]) => {
+  Promise.all([getData('index.json'), getData('lite/korea_index.json').catch(() => ({ maps: [] })), getData('admin/index.json').catch(() => null)]).then(([world, korea, admin]) => {
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const opt = (id, label) => `<option value="${esc(id)}">${esc(label)}</option>`;
     $('skMap').innerHTML = opt('', '바탕만 (세계)')
       + `<optgroup label="한국사">${korea.maps.map((m) => opt(m.id, '한국사 · ' + m.title)).join('')}</optgroup>`
+      + (admin ? `<optgroup label="행정구역(남북한)">${Object.entries(ADMIN_LEVELS).map(([k, l]) => opt('admin:' + k, '행정구역 · ' + l)).join('')}</optgroup>` : '')
       + `<optgroup label="세계사 교과서">${world.maps.map((m) => opt(m.id, `${m.vol}권 ${m.page}쪽 · ${m.title}`)).join('')}</optgroup>`;
+    if (admin && $('skYear')) $('skYear').innerHTML = admin.years.slice().reverse().map((y) => `<option value="${y}">${y}년</option>`).join('');
     const first = world.maps.find((m) => m.id.includes('p080')) || world.maps[0];
     $('skMap').value = first.id;
     mapId = null;

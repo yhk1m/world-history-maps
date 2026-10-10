@@ -27,7 +27,7 @@ export function prepareOverlay(fc, bbox, palette) {
     if (t === 'area' && (g.type === 'Polygon' || g.type === 'MultiPolygon')) {
       const geom = unwrapGeom(g, lon0).geom;
       const color = p.color || palette[ci++ % palette.length];
-      if (hit(bboxOf(geom), bbox)) out.areas.push({ name: p.name || '', color, geom });
+      if (hit(bboxOf(geom), bbox)) out.areas.push({ name: p.name || '', color, geom, ...(p.fill === false ? { noFill: true } : {}) });
     } else if (t === 'line') {
       const parts = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
       const arrow = p._t === 'line' || p.tool === 'arrow' || (!p.tool && !p._t);
@@ -61,6 +61,7 @@ export function tintGrid(overlay, grid, alpha = 0.45) {
   const lats = Array.from({ length: h }, (_, j) => bn - ((bn - bs) * j) / (h - 1));
   const t = new Float32Array(w * h * 4);
   for (const a of overlay.areas) {
+    if (a.noFill) continue; // 테두리만 덮는 영역(행정구역 경계 등)
     const m = scanMask(a.geom, lons, lats), c = rgb(a.color);
     for (let k = 0; k < m.length; k++) if (m[k]) t.set([c[0], c[1], c[2], alpha], k * 4);
   }

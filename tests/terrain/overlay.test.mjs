@@ -71,3 +71,12 @@ test('overlay 합치기', async () => {
   const a = { areas: [1], lines: [2], points: [3] }, b = { areas: [4], lines: [], points: [5] };
   assert.deepEqual(mergeOverlays(a, null, b), { areas: [1, 4], lines: [2], points: [3, 5] });
 });
+test('fill:false 영역은 색을 칠하지 않고 테두리만', async () => {
+  const fcx = { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { name: '경계만', fill: false, color: '#333333' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]] } },
+  ] };
+  const o = prepareOverlay(fcx, [-1, -1, 3, 3], ['#b3261e']);
+  assert.equal(o.areas[0].noFill, true);
+  const t = tintGrid(o, { w: 5, h: 5, bbox: [-1, -1, 3, 3], data: new Float32Array(25) });
+  assert.equal(t[(2 * 5 + 2) * 4 + 3], 0);
+});

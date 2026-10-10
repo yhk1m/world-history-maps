@@ -277,7 +277,8 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
         ${hasLines ? `<label><input type="checkbox" ${routes.visible ? 'checked' : ''} data-k="routes">경로</label>` : ''}
         ${hasPts ? `<label><input type="checkbox" ${points.visible ? 'checked' : ''} data-k="points">지점</label>` : ''}
       </div>
-      ${hasAreas ? `<ul class="v-leg">${overlay.areas.filter((a) => a.name).map((a) => `<li><i style="background:${a.color}73;border-color:${a.color}"></i>${esc(a.name)}</li>`).join('')}</ul>` : ''}`;
+      ${hasAreas ? `<ul class="v-leg">${overlay.areas.filter((a) => a.name && !a.noFill).map((a) => `<li><i style="background:${a.color}73;border-color:${a.color}"></i>${esc(a.name)}</li>`).join('')}${
+        overlay.areas.some((a) => a.noFill) ? `<li><i style="background:transparent;border-color:#333"></i>경계선 (${overlay.areas.filter((a) => a.noFill).length})</li>` : ''}</ul>` : ''}`;
     ctl.hidden = !ctl.querySelector('input');
     if (q('exag')) q('exag').addEventListener('input', (e) => setExag(+e.target.value));
     if (q('exagv')) {

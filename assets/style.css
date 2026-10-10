@@ -228,3 +228,5 @@ select optgroup { font-style: normal; font-weight: 600; color: var(--ink-2); }
 input[type="file"] { font: inherit; font-size: 12.5px; color: var(--ink-2); }
 input[type="file"]::file-selector-button { font: inherit; font-size: 12.5px; color: var(--ink); background: #fff; border: 1px solid var(--ink); border-radius: 0; padding: 6px 12px; margin-right: 10px; cursor: pointer; }
 input[type="file"]::file-selector-button:hover { background: var(--soft); }
+.sk-standalone { font-size: 12.5px; color: var(--ink-2); margin: 4px 0 0; }
+.sk-standalone a { color: var(--ink); }
