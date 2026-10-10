@@ -54,7 +54,7 @@
 /* 크게 보기 · 사이드바 보기 칸 · 단면도 */
 .t-box { position: relative; min-height: 0; }
 .t-max-btn { position: absolute; top: 10px; right: 10px; z-index: 1001; font: inherit; font-size: 12px; background: rgba(255,255,255,.95); border: 1px solid var(--ink); padding: 5px 10px; cursor: pointer; }
-.t-viewwrap .t-max-btn { right: 52px; }
+.t-viewwrap .t-max-btn { right: 66px; top: 18px; }
 .t-max-btn:hover { background: var(--ink); color: #fff; }
 .t-box.t-maxed { position: fixed; inset: 0; z-index: 2000; background: var(--paper); }
 .t-box.t-maxed .t-view { min-height: 0; }

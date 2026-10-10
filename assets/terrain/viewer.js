@@ -25,7 +25,9 @@ const CSS = `
 .whm3d .v-leg li{display:flex;align-items:center;gap:6px}
 .whm3d .v-leg i{width:12px;height:9px;border:1px solid;flex:none}
 .whm3d .v-cred{position:absolute;right:10px;bottom:6px;font-size:10px;color:#777;text-align:right;max-width:55%;pointer-events:none}
-.whm3d .v-n{position:absolute;right:14px;top:12px;font:600 11px/1 'JetBrains Mono',monospace;color:#4a4a4a;pointer-events:none}
+.whm3d .v-n{position:absolute;right:12px;top:10px;width:44px;height:44px;padding:0;border-radius:50%;border:1px solid #d6d4cf;background:rgba(255,255,255,.92);cursor:pointer}
+.whm3d .v-n:hover{border-color:#111}
+.whm3d .v-n svg{display:block;width:100%;height:100%}
 `;
 function injectCSS(doc) {
   if (doc.getElementById('whm3d-css')) return;
@@ -248,7 +250,7 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
   // UI(화면 위): 레이어 켜고 끄기 · 범례, inlineUI 면 높이 과장 · 해수면 · 중심점까지
   const ui = document.createElement('div');
   el.appendChild(ui);
-  ui.innerHTML = `<div class="v-title">${esc(payload.title || '')}</div><div class="v-n">N ↑</div>
+  ui.innerHTML = `<div class="v-title">${esc(payload.title || '')}</div><button class="v-n" title="나침반 — 누르면 북쪽이 위로" aria-label="나침반, 누르면 북쪽이 위로 오게 돌립니다"><svg viewBox="0 0 44 44"><g class="v-nr"><path d="M22 9 27 22h-10z" fill="#b3261e"/><path d="M22 35 27 22h-10z" fill="#c9c6bf"/><text x="22" y="8" text-anchor="middle" font-size="8" font-weight="700" font-family="'JetBrains Mono',monospace" fill="#111">N</text></g></svg></button>
     <div class="v-ctl"></div><div class="v-cred">${(payload.credits || []).map(esc).join('<br>')}</div>`;
   const ctl = ui.querySelector('.v-ctl');
   const q = (k) => ctl.querySelector(`[data-k="${k}"]`);
@@ -357,12 +359,28 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
   const ro = new ResizeObserver(resize);
   ro.observe(el);
   resize();
+  // 나침반을 누르면 각도·거리는 그대로 두고 북쪽이 위로 오게 돌린다
+  const needle = ui.querySelector('.v-nr');
+  let lastAz = NaN;
+  ui.querySelector('.v-n').addEventListener('click', () => {
+    const off = camera.position.clone().sub(controls.target);
+    const sph = new THREE.Spherical().setFromVector3(off), th0 = sph.theta, t0 = performance.now();
+    anim = (now) => {
+      const t = Math.min(1, (now - t0) / 500), e = 1 - (1 - t) ** 3;
+      sph.theta = th0 * (1 - e);
+      camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
+      if (t >= 1) anim = null;
+    };
+  });
   let alive = true;
   (function loop() {
     if (!alive) return;
     if (anim) anim(performance.now());
     controls.update();
     mark.position.copy(controls.target);
+    // 나침반: 카메라 방위각만큼 돌려 늘 실제 북쪽(-z)을 가리키게
+    const az = controls.getAzimuthalAngle();
+    if (!(Math.abs(az - lastAz) < 1e-4)) { lastAz = az; needle.setAttribute('transform', `rotate(${(az * 180) / Math.PI} 22 22)`); }
     renderer.render(scene, camera);
     requestAnimationFrame(loop);
   })();
