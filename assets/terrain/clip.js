@@ -68,6 +68,31 @@ export function contains(geom, lon, lat) {
   return false;
 }
 
+// 격자 전체 판정(스캔라인): lons 는 오름차순, lats 는 행 순서. 행마다 변 교차점을 모아
+// contains 와 같은 규칙(오른쪽 교차 개수의 홀짝)으로 채운다. 결과[j*lons.length+i] = 1 이면 안.
+export function scanMask(geom, lons, lats) {
+  const W = lons.length, out = new Uint8Array(W * lats.length);
+  const polys = polysOf(geom);
+  for (let j = 0; j < lats.length; j++) {
+    const y = lats[j];
+    for (const p of polys) {
+      const xs = [];
+      for (const r of p) for (let i = 0, k = r.length - 1; i < r.length; k = i++) {
+        const [xi, yi] = r[i], [xk, yk] = r[k];
+        if ((yi > y) !== (yk > y)) xs.push(((xk - xi) * (y - yi)) / (yk - yi) + xi);
+      }
+      if (!xs.length) continue;
+      xs.sort((a, b) => a - b);
+      let q = 0; // xs[q..] 가 lon 보다 큰 교차점
+      for (let i = 0; i < W; i++) {
+        while (q < xs.length && xs[q] <= lons[i]) q++;
+        if ((xs.length - q) & 1) out[j * W + i] = 1;
+      }
+    }
+  }
+  return out;
+}
+
 // 틀 → Polygon. rKm: 네모는 반 변, 세모·원은 외접원 반지름. rot: 도(반시계).
 export function shapePolygon(kind, { lon, lat, rKm, rot = 0 }) {
   const kx = KM_LON * Math.cos((lat * Math.PI) / 180);

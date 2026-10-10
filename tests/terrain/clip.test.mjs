@@ -43,3 +43,16 @@ test('sizeKm', () => {
   assert.ok(Math.abs(w - 111.3) < 1, `${w}`);
   assert.ok(Math.abs(h - 221.1) < 1, `${h}`);
 });
+import { scanMask } from '../../assets/terrain/clip.js';
+test('scanMask 는 contains 와 같은 답을 낸다', () => {
+  const g = { type: 'MultiPolygon', coordinates: [
+    [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], [[4, 4], [6, 4], [6, 6], [4, 6], [4, 4]]],
+    [[[12, 2], [15, 2], [13.5, 8], [12, 2]]],
+  ] };
+  const lons = Array.from({ length: 40 }, (_, i) => -1 + i * 0.43);
+  const lats = Array.from({ length: 30 }, (_, j) => 11 - j * 0.41);
+  const m = scanMask(g, lons, lats);
+  let diff = 0;
+  lats.forEach((la, j) => lons.forEach((lo, i) => { if (!!m[j * lons.length + i] !== contains(g, lo, la)) diff++; }));
+  assert.equal(diff, 0);
+});
