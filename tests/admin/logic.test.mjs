@@ -180,6 +180,15 @@ test('전통 지역 구분: 관동 대신 영동·영서(1975·2026 모두), 구
   }
 });
 
+test('모핑 2011→2012: 세종시가 충남과 함께 충북(청원군 부용면 일부)에서도 떼어 갔다', () => {
+  for (const [lv, cb] of [['sido', '충청북도'], ['sigungu', '충청북도 청원군']]) {
+    const o = fc(`kr/2011_${lv}.json`), n = fc(`kr/2012_${lv}.json`);
+    const m = morphGroups(o, n, renamedOf(2012, lv));
+    const g = m.groups.find((x) => names(n, x.news).some((s) => s.startsWith('세종')));
+    assert.ok(names(o, g.olds).includes(cb), lv + ': ' + names(o, g.olds));
+  }
+});
+
 test('연도 한 칸 옮기기', () => {
   const ys = [2013, 2014, 2015];
   assert.equal(stepYear(ys, 2014, 1), 2015);

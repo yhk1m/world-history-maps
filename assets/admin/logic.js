@@ -235,7 +235,7 @@ export function overlapShare(a, b, n = 18) {
 const unitKey = (f) => f.properties.full || f.properties.name;
 function sameShape(a, b) {
   const A = sphericalAreaKm2(a.geometry), B = sphericalAreaKm2(b.geometry);
-  if (Math.abs(A - B) > Math.max(A, B) * 0.01) return false;
+  if (Math.abs(A - B) > Math.min(Math.max(A, B) * 0.01, 10)) return false; // 큰 시·도에서도 10 km² 넘게 바뀌면 다른 모양
   const ba = bboxF(a), bb = bboxF(b);
   return ba.every((v, i) => Math.abs(v - bb[i]) < 0.01);
 }
@@ -246,9 +246,9 @@ function sameShape(a, b) {
  * 반환: { groups: [{ olds:[i], news:[i], pairs:[[oi, ni]] }], changedNew:Set, changedOld:Set, count }
  * maxCount 를 넘으면 겹침 계산 없이 { groups: [], tooMany: true }.
  * pairs 는 여럿↔여럿 묶음에서 새 단위마다 가장 많이 겹치는 옛 단위.
- * 하나↔하나 같은 단위의 넓이 차이가 minAreaChange 보다 작으면 바뀐 곳에서 뺀다.
+ * 같은 단위끼리만 이어진 묶음에서 저마다 넓이 차이가 minAreaChange 보다 작으면 바뀐 곳에서 뺀다.
  */
-export function morphGroups(olds, news, renamedFrom = new Map(), minShare = 0.15, maxCount = Infinity, minAreaChange = 0.03) {
+export function morphGroups(olds, news, renamedFrom = new Map(), minShare = 0.15, maxCount = Infinity, minAreaChange = 0.03, minKm2 = 10) {
   const oldByKey = new Map(olds.map((f, i) => [unitKey(f), i]));
   const changedNew = new Set(), keptOld = new Set();
   news.forEach((f, i) => {
@@ -260,10 +260,13 @@ export function morphGroups(olds, news, renamedFrom = new Map(), minShare = 0.15
   const count = changedNew.size + changedOld.size;
   if (count > maxCount) return { groups: [], changedNew, changedOld, count, tooMany: true };
   const edges = [];
+  // 몫이 minShare 이상이거나, 작은 몫이라도 넓이로 minKm2 이상 넘어갔으면 짝(예: 세종시가 떼어 간 충북 청원군 부용면 약 28 km², 세종의 6%)
+  const areaNew = new Map();
+  const aNew = (ni) => { if (!areaNew.has(ni)) areaNew.set(ni, sphericalAreaKm2(news[ni].geometry)); return areaNew.get(ni); };
   for (const ni of changedNew) for (const oi of changedOld) {
     const sn = overlapShare(news[ni], olds[oi]);
     const s = Math.max(sn, overlapShare(olds[oi], news[ni]));
-    if (s >= minShare) edges.push([oi, ni, sn]);
+    if (s >= minShare || (sn >= 0.03 && sn * aNew(ni) >= minKm2)) edges.push([oi, ni, sn]);
   }
   const parent = new Map();
   const find = (x) => { while (parent.get(x) !== x) x = parent.get(x); return x; };
@@ -277,16 +280,20 @@ export function morphGroups(olds, news, renamedFrom = new Map(), minShare = 0.15
     const c = comps.get(r);
     (x[0] === 'o' ? c.olds : c.news).push(Number(x.slice(1)));
   }
-  // 하나↔하나이면서 같은 단위(이름이 같거나 바뀐 이름으로 이어짐)이고 넓이 차이가 작으면
-  // 해안선·그림 차이일 뿐이므로 바뀐 곳에서 뺀다(옛 시점 자료는 해마다 해안선이 조금씩 다르다)
-  const sameUnit = (o, n) => { const k = unitKey(n); return unitKey(o) === k || unitKey(o) === renamedFrom.get(k); };
+  // 묶음 안이 모두 같은 단위끼리(이름이 같거나 바뀐 이름으로 이어짐, 새로 생기거나 없어진 단위 없음)이고
+  // 저마다 넓이 차이가 작으면 해안선·그림 차이일 뿐이므로 바뀐 곳에서 뺀다(옛 시점 자료는 해마다 해안선이 조금씩 다르다)
+  const prevKey = (n) => { const k = unitKey(n); return renamedFrom.get(k) || k; };
   const groups = [...comps.values()].filter((g) => {
-    if (g.olds.length !== 1 || g.news.length !== 1) return true;
-    const o = olds[g.olds[0]], n = news[g.news[0]];
-    if (!sameUnit(o, n)) return true;
-    const A = sphericalAreaKm2(o.geometry), B = sphericalAreaKm2(n.geometry);
-    if (Math.abs(A - B) > Math.max(A, B) * minAreaChange) return true;
-    changedOld.delete(g.olds[0]); changedNew.delete(g.news[0]);
+    if (g.olds.length !== g.news.length) return true;
+    const byKey = new Map(g.olds.map((i) => [unitKey(olds[i]), olds[i]]));
+    for (const ni of g.news) {
+      const o = byKey.get(prevKey(news[ni])) || byKey.get(unitKey(news[ni]));
+      if (!o) return true;
+      const A = sphericalAreaKm2(o.geometry), B = sphericalAreaKm2(news[ni].geometry);
+      if (Math.abs(A - B) > Math.max(A, B) * minAreaChange) return true;
+    }
+    for (const i of g.olds) changedOld.delete(i);
+    for (const i of g.news) changedNew.delete(i);
     return false;
   });
   for (const g of groups) {
