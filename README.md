@@ -47,7 +47,7 @@ https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/maps/{지도}/{파일}
 
 ## 행정구역 (`data/admin/`)
 남북한 행정구역 경계를 연도별·단위별로: 남한 1975~2026(1995년까지 5년마다, 2000년부터 해마다 — 1975~2012년은 연말, 2013년부터는 7월 1일 무렵 시점. 단위: 국토 7대 권역·전통 지역 구분·시도·시군구), 북한 현재 판(시도·시군). 권역은 e-GIS 의 병합(디졸브) 방식(turf union)으로 시도를 합쳐 만들었다. 전통 지역 구분의 관동(남북 강원)은 시·군 단위로 영동·영서로 나눴다(분수령 기준, 태백은 영동). 다른 묶음이 필요하면 시·군·구 GeoJSON 을 AI 에게 주고 말로 합치거나 나누도록 부탁하면 쉽다.
-- 남한: 본 데이터는 통계청 통계지리정보서비스(SGIS, https://sgis.kostat.go.kr)에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: vuski/admdongkor, https://github.com/vuski/admdongkor), CC BY 4.0으로 배포됩니다.
+- 남한: 본 데이터는 국가데이터처(옛 통계청) 통계지리정보서비스(SGIS, https://sgis.kostat.go.kr)에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: vuski/admdongkor, https://github.com/vuski/admdongkor), CC BY 4.0으로 배포됩니다.
 - 북한: geoBoundaries (Runfola et al. 2020, https://www.geoboundaries.org), 원자료 World Food Programme, OCHA ROAP, CC BY 3.0 IGO.
 
 ## 만든 방법

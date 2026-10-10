@@ -3,9 +3,9 @@
   "kr": {
    "name": "vuski/admdongkor (행정동 경계, 시군구·시도 light 단순화 parquet)",
    "url": "https://github.com/vuski/admdongkor",
-   "upstream": "통계청 통계지리정보서비스(SGIS) 행정동 경계, 공공누리 제1유형",
+   "upstream": "국가데이터처(옛 통계청) 통계지리정보서비스(SGIS) 행정동 경계, 공공누리 제1유형",
    "license": "CC BY 4.0 (가공물) + KOGL Type 1 (원자료 출처표시 의무)",
-   "attribution": "본 데이터는 통계청 통계지리정보서비스(SGIS, https://sgis.kostat.go.kr)에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: vuski/admdongkor, https://github.com/vuski/admdongkor), CC BY 4.0으로 배포됩니다.",
+   "attribution": "본 데이터는 국가데이터처(옛 통계청) 통계지리정보서비스(SGIS, https://sgis.kostat.go.kr)에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: vuski/admdongkor, https://github.com/vuski/admdongkor), CC BY 4.0으로 배포됩니다.",
    "versions": {
     "1975": "19751231",
     "1980": "19801231",
