@@ -76,7 +76,10 @@ export function createViewer(el, payload) {
   const { w: kw, h: kh } = sizeKm(grid.bbox);
   const S = Math.max(kw, kh);
   const relief = Math.max(0.2, (A.maxIn - A.minIn) / 1000);
-  let exag = payload.exag || Math.min(50, Math.max(1, Math.round((0.03 * Math.hypot(kw, kh)) / relief * 2) / 2));
+  // 높이 과장은 실제 높이(1배)~5배. 처음 값은 구역 크기로 정하되 5배를 넘지 않는다
+  const MAX_EXAG = 5;
+  const clampExag = (v) => Math.min(MAX_EXAG, Math.max(1, Math.round(v * 2) / 2));
+  let exag = clampExag(payload.exag || (0.03 * Math.hypot(kw, kh)) / relief);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -187,7 +190,7 @@ export function createViewer(el, payload) {
     <div class="v-title">${esc(payload.title || '')}</div>
     <div class="v-n">N ↑</div>
     <div class="v-ctl">
-      <label>높이 과장 <input type="range" min="1" max="50" step="0.5" value="${exag}" data-k="exag"> <b data-k="exagv">${exag}×</b></label>
+      <label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <b data-k="exagv">${exag}×</b></label>
       <div class="v-row">
         ${sea ? '<label><input type="checkbox" checked data-k="sea">해수면</label>' : ''}
         ${hasAreas ? '<label><input type="checkbox" checked data-k="areas">영역</label>' : ''}
