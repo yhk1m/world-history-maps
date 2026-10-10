@@ -45,3 +45,29 @@ test('격자 코덱 왕복', () => {
   const a = Float32Array.from([-10994.4, 0, 8848.6, 123, 40000]);
   assert.deepEqual([...decodeGrid(encodeGrid(a), 5)], [-10994, 0, 8849, 123, 32767]);
 });
+test('_t 가 없는 GeoJSON(크로키 저장 파일)도 도형 종류로 나누고 색·도구를 가져온다', () => {
+  const sk = { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { tool: 'arrow', color: '#1f4e79', width: 3 }, geometry: { type: 'LineString', coordinates: [[0, 0], [1, 1]] } },
+    { type: 'Feature', properties: { tool: 'text', text: '여기', color: '#111111' }, geometry: { type: 'Point', coordinates: [1, 1] } },
+    { type: 'Feature', properties: { name: '내 영역' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] } },
+  ] };
+  const o = prepareOverlay(sk, [-1, -1, 3, 3], ['#b3261e']);
+  assert.equal(o.lines[0].color, '#1f4e79');
+  assert.equal(o.lines[0].arrow, true);
+  assert.equal(o.points[0].name, '여기');
+  assert.equal(o.areas[0].name, '내 영역');
+});
+test('교과서 경로는 화살표, 크로키 펜 선은 화살표 없음', () => {
+  const fc2 = { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { _t: 'line', name: 'L' }, geometry: { type: 'LineString', coordinates: [[0, 0], [1, 1]] } },
+    { type: 'Feature', properties: { tool: 'pen', color: '#b3261e' }, geometry: { type: 'LineString', coordinates: [[0, 0], [1, 1]] } },
+  ] };
+  const o = prepareOverlay(fc2, [-1, -1, 3, 3], ['#000']);
+  assert.deepEqual(o.lines.map((l) => l.arrow), [true, false]);
+  assert.equal(o.lines[0].color, '#111111');
+});
+test('overlay 합치기', async () => {
+  const { mergeOverlays } = await import('../../assets/terrain/overlay.js');
+  const a = { areas: [1], lines: [2], points: [3] }, b = { areas: [4], lines: [], points: [5] };
+  assert.deepEqual(mergeOverlays(a, null, b), { areas: [1, 4], lines: [2], points: [3, 5] });
+});

@@ -1,7 +1,8 @@
 // © 2026 김용현
 // 3D 지형 뷰어 — 페이지(terrain.html)와 내보낸 HTML 이 같이 쓴다.
-// payload = { title, grid:{w,h,bbox,data}, region(geom), overlay(prepareOverlay 결과|null), credits:[문자열], exag? }
-// opts.inlineUI = false 면 화면 위 높이 과장·중심점 조절을 숨긴다(페이지가 사이드바에서 setExag·setCenterVisible 로 조절).
+// payload = { title, grid:{w,h,bbox,data}, region(geom), overlay(prepareOverlay 결과|null), credits:[문자열],
+//             exag?, seaLevel?, view?(getView 결과) }
+// opts.inlineUI = false 면 화면 위 높이 과장·해수면·중심점 조절을 숨긴다(페이지가 사이드바에서 set○○ 로 조절).
 // 화면을 더블클릭하면 그 땅 위 지점이 회전 중심이 된다(e-GIS 와 같은 방식).
 
 import * as THREE from 'three';
@@ -17,7 +18,8 @@ const CSS = `
 .whm3d .v-ctl[hidden]{display:none}
 .whm3d .v-ctl{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.92);border:1px solid #e6e6e6;padding:10px 12px;font-size:12px;line-height:1.6;max-width:min(300px,calc(100% - 24px))}
 .whm3d .v-ctl label{display:flex;align-items:center;gap:6px;cursor:pointer}
-.whm3d .v-ctl input[type=range]{width:120px}
+.whm3d .v-ctl input[type=range]{width:110px}
+.whm3d .v-ctl input[type=number]{width:52px;font:inherit;padding:1px 4px;border:1px solid #ccc}
 .whm3d .v-row{display:flex;flex-wrap:wrap;gap:4px 12px}
 .whm3d .v-leg{margin:6px 0 0;padding:0;list-style:none;max-height:110px;overflow:auto}
 .whm3d .v-leg li{display:flex;align-items:center;gap:6px}
@@ -33,6 +35,7 @@ function injectCSS(doc) {
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rgb = (hex) => [0, 2, 4].map((i) => parseInt(hex.replace('#', '').slice(i, i + 2), 16) / 255);
 
 function geometry({ positions, colors, index }) {
   const g = new THREE.BufferGeometry();
@@ -61,7 +64,7 @@ function centerSprite() {
   return sp;
 }
 
-function label(text) {
+function label(text, color = '#111') {
   const c = document.createElement('canvas');
   const ctx = c.getContext('2d');
   const font = '600 28px Pretendard, system-ui, sans-serif';
@@ -70,7 +73,7 @@ function label(text) {
   c.width = w; c.height = 44;
   ctx.font = font; ctx.textBaseline = 'middle';
   ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.strokeText(text, 10, 23);
-  ctx.fillStyle = '#111'; ctx.fillText(text, 10, 23);
+  ctx.fillStyle = color; ctx.fillText(text, 10, 23);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, sizeAttenuation: false }));
@@ -80,26 +83,29 @@ function label(text) {
   return sp;
 }
 
-export const MAX_EXAG = 10;
-export const clampExag = (v) => Math.min(MAX_EXAG, Math.max(1, Math.round(v * 2) / 2));
+export const MAX_EXAG = 20;
+// 슬라이더는 0.5배씩, 숫자 칸은 0.1배까지 받는다
+export const clampExag = (v) => (Number.isFinite(+v) ? Math.min(MAX_EXAG, Math.max(1, Math.round(v * 10) / 10)) : 1);
+export const SEA_MIN = -150, SEA_MAX = 150; // 해수면 조절 범위(m) — 빙하기 해수면(약 -120 m)까지
 
 export function createViewer(el, payload, { inlineUI = true } = {}) {
   injectCSS(el.ownerDocument);
   el.classList.add('whm3d');
   el.innerHTML = '';
-  const { grid, region, overlay } = payload;
+  const { grid, region } = payload;
+  let overlay = payload.overlay || null;
 
-  const tg = overlay && overlay.areas.length ? tintGrid(overlay, grid) : null;
-  const A = buildArrays(grid, region, { tintGrid: tg });
-  const plain = new Float32Array(grid.w * grid.h * 3);
-  for (let k = 0; k < grid.w * grid.h; k++) plain.set(hypso(grid.data[k]), k * 3);
-  const tinted = A.top.colors.slice(); // 표면 색 속성은 이 배열을 그대로 쓰므로 복사본을 따로 둔다
+  const A = buildArrays(grid, region);
+  const n = grid.w * grid.h;
+  const plain = A.top.colors.slice(); // 영역색 없는 고도색
+  let tinted = plain;
 
   const { w: kw, h: kh } = sizeKm(grid.bbox);
   const S = Math.max(kw, kh);
   const relief = Math.max(0.2, (A.maxIn - A.minIn) / 1000);
-  // 높이 과장은 실제 높이(1배)~10배. 처음 값은 구역 크기로 정하되 10배를 넘지 않는다
-  let exag = clampExag(payload.exag || (0.03 * Math.hypot(kw, kh)) / relief);
+  // 높이 과장은 실제 높이(1배)~20배. 처음 값은 구역 크기로 정하되 10배를 넘지 않는다
+  let exag = clampExag(payload.exag || Math.min(10, Math.round((0.03 * Math.hypot(kw, kh)) / relief * 2) / 2));
+  let seaLevel = Math.max(SEA_MIN, Math.min(SEA_MAX, payload.seaLevel || 0));
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -127,30 +133,36 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
   const walls = new THREE.Mesh(geometry(A.walls), new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }));
   model.add(top, base, walls);
 
-  // 해수면: 구역 모양 그대로(표면과 같은 칸) y = 0 반투명
-  let sea = null;
-  if (A.minIn < 0) {
-    const tp = A.top.positions, ti = A.top.index;
-    const sp = tp.slice();
-    for (let k = 1; k < sp.length; k += 3) sp[k] = 0;
-    // 해발 0 m 아래 꼭짓점이 있는 삼각형만, 해안 저지대와 겹치면 지형이 이기게(polygonOffset)
-    const si = [];
-    for (let t = 0; t < ti.length; t += 3) {
-      if (tp[ti[t] * 3 + 1] < 0 || tp[ti[t + 1] * 3 + 1] < 0 || tp[ti[t + 2] * 3 + 1] < 0) si.push(ti[t], ti[t + 1], ti[t + 2]);
-    }
-    sea = new THREE.Mesh(geometry({ positions: sp, index: Uint32Array.from(si) }),
+  // 해수면: 구역 모양 그대로, 해수면보다 낮은 꼭짓점이 있는 삼각형만. 해안 저지대와 겹치면 지형이 이기게(polygonOffset)
+  const hasSea = A.minIn < SEA_MAX;
+  let sea = null, seaOn = A.minIn < 0;
+  if (hasSea) {
+    const sp = A.top.positions.slice();
+    sea = new THREE.Mesh(geometry({ positions: sp, index: new Uint32Array(3) }),
       new THREE.MeshLambertMaterial({ color: 0x4f7fa8, transparent: true, opacity: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }));
     sea.renderOrder = 2;
     model.add(sea);
   }
+  function placeSea() {
+    if (!sea) return;
+    const tp = A.top.positions, ti = A.top.index, pos = sea.geometry.getAttribute('position');
+    for (let k = 0; k < pos.count; k++) pos.setY(k, seaLevel / 1000);
+    pos.needsUpdate = true;
+    const si = [];
+    for (let t = 0; t < ti.length; t += 3) {
+      if (tp[ti[t] * 3 + 1] < seaLevel || tp[ti[t + 1] * 3 + 1] < seaLevel || tp[ti[t + 2] * 3 + 1] < seaLevel) si.push(ti[t], ti[t + 1], ti[t + 2]);
+    }
+    sea.geometry.setIndex(new THREE.BufferAttribute(Uint32Array.from(si.length ? si : [0, 0, 0]), 1));
+    sea.visible = seaOn && si.length > 0;
+  }
+  placeSea();
 
-  // 경로·지점: 높이 과장이 바뀌면 다시 놓는다(띄우는 높이는 과장과 무관하게)
+  // 경로·지점·영역 테두리·단면선: 높이 과장이 바뀌면 다시 놓는다(띄우는 높이는 과장과 무관하게)
   const sample = sampler(grid);
   const P = A.project;
   const lift = S * 0.004;
-  const routes = new THREE.Group(), points = new THREE.Group(), outlines = new THREE.Group();
-  scene.add(routes, points, outlines);
-  // 선을 지형에 얹고 구역 안 구간(run)만 남긴다
+  const routes = new THREE.Group(), points = new THREE.Group(), outlines = new THREE.Group(), profileG = new THREE.Group();
+  scene.add(routes, points, outlines, profileG);
   const runsOf = (coords) => {
     const pts = drape(coords, sample, Math.max(1, S / 300));
     const runs = []; let cur = [];
@@ -161,31 +173,46 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     if (cur.length) runs.push(cur);
     return runs;
   };
-  const draped = (overlay ? overlay.lines : []).map((l) => ({ runs: runsOf(l.coords), endIn: contains(region, ...l.coords[l.coords.length - 1]) }));
-  // 영역 테두리(겹친 영역도 구분되게)
   const rings = (g) => (g.type === 'Polygon' ? g.coordinates : g.coordinates.flat());
-  const edges = (overlay ? overlay.areas : []).map((a) => ({ color: a.color, runs: rings(a.geom).flatMap(runsOf) }));
-  const pins = (overlay ? overlay.points : []).filter((p) => contains(region, p.lon, p.lat));
-  const lineMat = new THREE.LineBasicMaterial({ color: 0x111111 });
-  const coneMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  const pinMat = new THREE.MeshBasicMaterial({ color: 0xb3261e });
-  const y3 = (m) => (Math.max(m, 0) / 1000) * exag + lift;
-  const toV = (run, up) => run.map(([lon, lat, m]) => { const [x, z] = P(lon, lat); return new THREE.Vector3(x, y3(m) - up, z); });
-  const edgeMats = new Map();
+  let draped = [], edges = [], pins = [], profile = null;
+  const mats = new Map();
+  const lineMat = (c) => { if (!mats.has('l' + c)) mats.set('l' + c, new THREE.LineBasicMaterial({ color: c })); return mats.get('l' + c); };
+  const meshMat = (c) => { if (!mats.has('m' + c)) mats.set('m' + c, new THREE.MeshBasicMaterial({ color: c })); return mats.get('m' + c); };
+  const ground = (m) => Math.max(m, sea && sea.visible ? seaLevel : 0);
+  const y3 = (m) => (ground(m) / 1000) * exag + lift;
+  const toV = (run, up = 0) => run.map(([lon, lat, m]) => { const [x, z] = P(lon, lat); return new THREE.Vector3(x, y3(m) - up, z); });
+
+  function prepare() {
+    draped = (overlay ? overlay.lines : []).map((l) => ({ runs: runsOf(l.coords), color: l.color || '#111111', arrow: l.arrow !== false, endIn: contains(region, ...l.coords[l.coords.length - 1]) }));
+    edges = (overlay ? overlay.areas : []).map((a) => ({ color: a.color, runs: rings(a.geom).flatMap(runsOf) }));
+    pins = (overlay ? overlay.points : []).filter((p) => contains(region, p.lon, p.lat));
+    // 영역색: 고도색에 섞기
+    if (overlay && overlay.areas.length) {
+      const tg = tintGrid(overlay, grid);
+      tinted = plain.slice();
+      for (let k = 0; k < n; k++) {
+        const a = tg[k * 4 + 3];
+        if (a > 0) for (let q = 0; q < 3; q++) tinted[k * 3 + q] = plain[k * 3 + q] * (1 - a) + tg[k * 4 + q] * a;
+      }
+    } else tinted = plain;
+  }
+  let areasOn = true;
+  const paintAreas = () => {
+    topGeom.getAttribute('color').copyArray(areasOn ? tinted : plain);
+    topGeom.getAttribute('color').needsUpdate = true;
+    outlines.visible = areasOn;
+  };
   function placeOverlay() {
-    routes.clear(); points.clear(); outlines.clear();
-    for (const e of edges) {
-      if (!edgeMats.has(e.color)) edgeMats.set(e.color, new THREE.LineBasicMaterial({ color: e.color }));
-      for (const run of e.runs) if (run.length > 1) outlines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(toV(run, lift * 0.6)), edgeMats.get(e.color)));
-    }
+    routes.clear(); points.clear(); outlines.clear(); profileG.clear();
+    for (const e of edges) for (const run of e.runs) if (run.length > 1) outlines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(toV(run, lift * 0.6)), lineMat(e.color)));
     for (const d of draped) {
       d.runs.forEach((run, ri) => {
         if (run.length < 2) return;
-        const v = run.map(([lon, lat, m]) => { const [x, z] = P(lon, lat); return new THREE.Vector3(x, y3(m), z); });
-        routes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(v), lineMat));
-        if (d.endIn && ri === d.runs.length - 1) {
+        const v = toV(run);
+        routes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(v), lineMat(d.color)));
+        if (d.arrow && d.endIn && ri === d.runs.length - 1) {
           const a = v[v.length - 2], b = v[v.length - 1];
-          const cone = new THREE.Mesh(new THREE.ConeGeometry(S * 0.006, S * 0.018, 12), coneMat);
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(S * 0.006, S * 0.018, 12), meshMat(d.color));
           cone.position.copy(b);
           cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
           routes.add(cone);
@@ -195,46 +222,83 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     for (const p of pins) {
       const [x, z] = P(p.lon, p.lat);
       const y = y3(sample(p.lon, p.lat));
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(S * 0.004, 12, 8), pinMat);
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(S * 0.004, 12, 8), meshMat(p.color || '#b3261e'));
       dot.position.set(x, y, z);
-      const lb = label(p.name);
+      const lb = label(p.name, p.color || '#111');
       lb.position.set(x, y, z);
       points.add(dot, lb);
     }
+    if (profile) {
+      for (const run of profile.runs) if (run.length > 1) profileG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(toV(run, -lift * 0.5)), lineMat('#e0007a')));
+      profile.ends.forEach(([lon, lat], i) => {
+        if (!contains(region, lon, lat)) return;
+        const [x, z] = P(lon, lat);
+        const lb = label(i ? 'B' : 'A', '#e0007a');
+        lb.position.set(x, y3(sample(lon, lat)), z);
+        profileG.add(lb);
+      });
+    }
   }
-  placeOverlay();
 
-  // UI
-  const hasAreas = !!(overlay && overlay.areas.length), hasLines = draped.some((d) => d.runs.length), hasPts = pins.length > 0;
-  el.insertAdjacentHTML('beforeend', `
-    <div class="v-title">${esc(payload.title || '')}</div>
-    <div class="v-n">N ↑</div>
-    <div class="v-ctl"${inlineUI || sea || hasAreas || hasLines || hasPts ? '' : ' hidden'}>
-      ${inlineUI ? `<label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <b data-k="exagv">${exag}×</b></label>` : ''}
+  // UI(화면 위): 레이어 켜고 끄기 · 범례, inlineUI 면 높이 과장 · 해수면 · 중심점까지
+  const ui = document.createElement('div');
+  el.appendChild(ui);
+  ui.innerHTML = `<div class="v-title">${esc(payload.title || '')}</div><div class="v-n">N ↑</div>
+    <div class="v-ctl"></div><div class="v-cred">${(payload.credits || []).map(esc).join('<br>')}</div>`;
+  const ctl = ui.querySelector('.v-ctl');
+  const q = (k) => ctl.querySelector(`[data-k="${k}"]`);
+  let markOn = true;
+  function renderCtl() {
+    const hasAreas = !!(overlay && overlay.areas.length), hasLines = draped.some((d) => d.runs.length), hasPts = pins.length > 0;
+    ctl.innerHTML = `
+      ${inlineUI ? `<label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <input type="number" min="1" max="${MAX_EXAG}" step="0.1" value="${exag}" data-k="exagv" aria-label="높이 과장(배)">×</label>` : ''}
+      ${inlineUI && hasSea ? `<label>해수면 <input type="range" min="${SEA_MIN}" max="${SEA_MAX}" step="5" value="${seaLevel}" data-k="seaLv"> <b data-k="seaLvv">${seaLevel} m</b></label>` : ''}
       <div class="v-row">
-        ${inlineUI ? '<label title="화면을 더블클릭하면 그 자리가 회전 중심이 됩니다"><input type="checkbox" checked data-k="center">중심점</label>' : ''}
-        ${sea ? '<label><input type="checkbox" checked data-k="sea">해수면</label>' : ''}
-        ${hasAreas ? '<label><input type="checkbox" checked data-k="areas">영역</label>' : ''}
-        ${hasLines ? '<label><input type="checkbox" checked data-k="routes">경로</label>' : ''}
-        ${hasPts ? '<label><input type="checkbox" checked data-k="points">지점</label>' : ''}
+        ${inlineUI ? `<label title="화면을 더블클릭하면 그 자리가 회전 중심이 됩니다"><input type="checkbox" ${markOn ? 'checked' : ''} data-k="center">중심점</label>` : ''}
+        ${hasSea ? `<label><input type="checkbox" ${seaOn ? 'checked' : ''} data-k="sea">해수면</label>` : ''}
+        ${hasAreas ? `<label><input type="checkbox" ${areasOn ? 'checked' : ''} data-k="areas">영역</label>` : ''}
+        ${hasLines ? `<label><input type="checkbox" ${routes.visible ? 'checked' : ''} data-k="routes">경로</label>` : ''}
+        ${hasPts ? `<label><input type="checkbox" ${points.visible ? 'checked' : ''} data-k="points">지점</label>` : ''}
       </div>
-      ${hasAreas ? `<ul class="v-leg">${overlay.areas.map((a) => `<li><i style="background:${a.color}73;border-color:${a.color}"></i>${esc(a.name)}</li>`).join('')}</ul>` : ''}
-    </div>
-    <div class="v-cred">${(payload.credits || []).map(esc).join('<br>')}</div>`);
-  const q = (k) => el.querySelector(`[data-k="${k}"]`);
+      ${hasAreas ? `<ul class="v-leg">${overlay.areas.filter((a) => a.name).map((a) => `<li><i style="background:${a.color}73;border-color:${a.color}"></i>${esc(a.name)}</li>`).join('')}</ul>` : ''}`;
+    ctl.hidden = !ctl.querySelector('input');
+    if (q('exag')) q('exag').addEventListener('input', (e) => setExag(+e.target.value));
+    if (q('exagv')) {
+      q('exagv').addEventListener('change', (e) => { setExag(+e.target.value); e.target.value = exag; });
+      q('exagv').addEventListener('keydown', (e) => { if (e.key === 'Enter') setExag(+e.target.value); });
+    }
+    if (q('seaLv')) q('seaLv').addEventListener('input', (e) => setSeaLevel(+e.target.value));
+    if (q('center')) q('center').addEventListener('change', (e) => setCenterVisible(e.target.checked));
+    if (q('sea')) q('sea').addEventListener('change', (e) => { seaOn = e.target.checked; placeSea(); placeOverlay(); });
+    if (q('areas')) q('areas').addEventListener('change', (e) => { areasOn = e.target.checked; paintAreas(); });
+    if (q('routes')) q('routes').addEventListener('change', (e) => { routes.visible = e.target.checked; });
+    if (q('points')) q('points').addEventListener('change', (e) => { points.visible = e.target.checked; });
+  }
+
   // 회전 중심점: 땅 위 고도(m)를 기억해 두었다가 높이 과장이 바뀌어도 땅에 붙어 있게
   const mark = centerSprite();
   scene.add(mark);
   let centerM = 0;
-  const setExag = (v) => {
-    exag = clampExag(v); model.scale.y = exag; placeOverlay();
+  const keepCenter = () => {
     const dy = (centerM / 1000) * exag - controls.target.y;
     controls.target.y += dy; camera.position.y += dy;
-    if (inlineUI) { q('exag').value = exag; q('exagv').textContent = exag + '×'; }
   };
-  if (inlineUI) q('exag').addEventListener('input', (e) => setExag(+e.target.value));
-  const setCenterVisible = (on) => { mark.visible = on; if (inlineUI) q('center').checked = on; };
-  if (inlineUI) q('center').addEventListener('change', (e) => setCenterVisible(e.target.checked));
+  function setExag(v) {
+    exag = clampExag(v); model.scale.y = exag; keepCenter(); placeOverlay();
+    if (q('exag')) { q('exag').value = exag; if (document.activeElement !== q('exagv')) q('exagv').value = exag; }
+  }
+  function setSeaLevel(m) {
+    seaLevel = Math.max(SEA_MIN, Math.min(SEA_MAX, Math.round(m)));
+    placeSea(); placeOverlay();
+    if (q('seaLv')) { q('seaLv').value = seaLevel; q('seaLvv').textContent = seaLevel + ' m'; }
+  }
+  function setCenterVisible(on) { markOn = on; mark.visible = on; if (q('center')) q('center').checked = on; }
+  function setOverlay(ov) { overlay = ov || null; prepare(); paintAreas(); placeOverlay(); renderCtl(); }
+  // 단면선: [[lon,lat],…] 를 지형 위에 분홍 선으로(구역 밖 구간은 빼고), 끝점에 A·B
+  function setProfile(coords) {
+    profile = coords && coords.length > 1 ? { runs: runsOf(coords), ends: [coords[0], coords[coords.length - 1]] } : null;
+    placeOverlay();
+  }
 
   // 더블클릭 = 그 땅 위 지점으로 회전 중심 옮기기(카메라는 같은 각도·거리로 따라감)
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -255,14 +319,18 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
       if (t >= 1) anim = null;
     };
   });
-  if (sea) q('sea').addEventListener('change', (e) => { sea.visible = e.target.checked; });
-  if (hasAreas) q('areas').addEventListener('change', (e) => {
-    outlines.visible = e.target.checked;
-    topGeom.getAttribute('color').copyArray(e.target.checked ? tinted : plain);
-    topGeom.getAttribute('color').needsUpdate = true;
-  });
-  if (hasLines) q('routes').addEventListener('change', (e) => { routes.visible = e.target.checked; });
-  if (hasPts) q('points').addEventListener('change', (e) => { points.visible = e.target.checked; });
+
+  // 시점: 카메라·중심·높이 과장·해수면을 묶어 저장·복원(내보낸 파일도 이 시점으로 열린다)
+  const getView = () => ({ pos: camera.position.toArray(), target: controls.target.toArray(), centerM, exag, seaLevel });
+  function setView(v) {
+    if (!v) return;
+    anim = null;
+    if (v.exag) { exag = clampExag(v.exag); model.scale.y = exag; if (q('exag')) { q('exag').value = exag; if (document.activeElement !== q('exagv')) q('exagv').value = exag; } }
+    if (v.seaLevel !== undefined) setSeaLevel(v.seaLevel);
+    centerM = v.centerM || 0;
+    camera.position.fromArray(v.pos); controls.target.fromArray(v.target);
+    controls.update(); placeOverlay();
+  }
 
   // 모형 전체가 화면에 들어오게: 위에서 비스듬히(약 45°) 본 거리
   let fitted = false;
@@ -277,8 +345,10 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     const w = el.clientWidth || 1, h = el.clientHeight || 1;
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
-    if (!fitted && el.clientWidth) { fit(); fitted = true; }
+    if (!fitted && el.clientWidth) { fit(); fitted = true; if (payload.view) setView(payload.view); }
   };
+
+  prepare(); paintAreas(); placeOverlay(); renderCtl();
   const ro = new ResizeObserver(resize);
   ro.observe(el);
   resize();
@@ -295,9 +365,11 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
   return {
     scene, camera, model,
     get exag() { return exag; },
-    setExag,
-    setCenterVisible,
+    get seaLevel() { return seaLevel; },
     get target() { return controls.target.clone(); },
+    hasSea,
+    setExag, setSeaLevel, setCenterVisible, setOverlay, setProfile, getView, setView, fit: () => { centerM = 0; fit(); },
+    toPNG: () => { renderer.render(scene, camera); return renderer.domElement.toDataURL('image/png'); },
     dispose() {
       alive = false; ro.disconnect(); controls.dispose(); renderer.dispose();
       scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); });

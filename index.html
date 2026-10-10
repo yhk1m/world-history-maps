@@ -166,7 +166,6 @@ frames.forEach((f, i) =&gt; {
           <button data-c="#6a3d9a" style="--c:#6a3d9a" aria-label="보라"></button>
         </div>
       </div>
-      <label class="sk-check sk-ws"><input type="checkbox" id="skWorksheet">학습지 모드 — 이름 숨기기</label>
       <details class="sk-layers">
         <summary>바탕 레이어</summary>
         <div id="skLayers"></div>
@@ -194,7 +193,7 @@ frames.forEach((f, i) =&gt; {
         <button class="btn" id="mPlay">재생</button>
       </div>
       <pre class="code"><code>// d3 + flubber
-const proj = d3.geoNaturalEarth1().fitSize([w, h], fc);
+const proj = d3.geoEqualEarth().fitSize([w, h], fc);
 const path = d3.geoPath(proj);
 const a = path(stageA), b = path(stageB);
 const tween = flubber.interpolate(a, b, { maxSegmentLength: 3 });

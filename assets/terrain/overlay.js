@@ -12,30 +12,42 @@ const lineBBox = (c) => {
 };
 const shift = (lon, lon0) => lon + 360 * Math.round((lon0 - lon) / 360);
 
+// 교과서 지도는 properties._t(area·line·point)로, 크로키 저장 파일처럼 _t 가 없으면 도형 종류로 나눈다.
+// 선: color(없으면 검정), arrow(교과서 경로·크로키 화살표는 끝에 화살촉). 점: 이름은 name 또는 text.
+const kindOf = (p, g) => p._t || ({ Polygon: 'area', MultiPolygon: 'area', LineString: 'line', MultiLineString: 'line', Point: 'point' })[g.type];
+
 export function prepareOverlay(fc, bbox, palette) {
   const lon0 = (bbox[0] + bbox[2]) / 2;
   const out = { areas: [], lines: [], points: [] };
   let ci = 0;
-  for (const f of fc.features) {
+  for (const f of fc.features || []) {
     const p = f.properties || {}, g = f.geometry;
     if (!g) continue;
-    if (p._t === 'area' && (g.type === 'Polygon' || g.type === 'MultiPolygon')) {
+    const t = kindOf(p, g);
+    if (t === 'area' && (g.type === 'Polygon' || g.type === 'MultiPolygon')) {
       const geom = unwrapGeom(g, lon0).geom;
-      const color = palette[ci++ % palette.length];
+      const color = p.color || palette[ci++ % palette.length];
       if (hit(bboxOf(geom), bbox)) out.areas.push({ name: p.name || '', color, geom });
-    } else if (p._t === 'line') {
+    } else if (t === 'line') {
       const parts = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+      const arrow = p._t === 'line' || p.tool === 'arrow' || (!p.tool && !p._t);
       for (const c of parts) {
         const u = unwrapRing(c, lon0);
-        if (hit(lineBBox(u), bbox)) out.lines.push({ name: p.name || '', coords: u });
+        if (hit(lineBBox(u), bbox)) out.lines.push({ name: p.name || '', coords: u, color: p.color || '#111111', arrow });
       }
-    } else if (p._t === 'point' && g.type === 'Point') {
+    } else if (t === 'point' && g.type === 'Point') {
       const lon = shift(g.coordinates[0], lon0), lat = g.coordinates[1];
-      if (hit([lon, lat, lon, lat], bbox)) out.points.push({ name: p.name || '', lon, lat, category: p.category || '' });
+      if (hit([lon, lat, lon, lat], bbox)) out.points.push({ name: p.name || p.text || '', lon, lat, category: p.category || '', color: p.color || '' });
     }
   }
   return out;
 }
+
+export const mergeOverlays = (...os) => {
+  const out = { areas: [], lines: [], points: [] };
+  for (const o of os) if (o) for (const k of ['areas', 'lines', 'points']) out[k].push(...o[k]);
+  return out;
+};
 
 const rgb = (hex) => {
   const h = hex.replace('#', '');

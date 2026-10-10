@@ -37,7 +37,7 @@
   function hero(heroList) {
     const svg = d3.select('#morph');
     const W = 1200, H = 560;
-    const proj = d3.geoNaturalEarth1().rotate([-62, 0]).fitExtent([[10, 10], [W - 10, H - 10]],
+    const proj = d3.geoEqualEarth().rotate([-62, 0]).fitExtent([[10, 10], [W - 10, H - 10]],
       { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-12, 8], [-12, 58], [140, 58], [140, 8], [-12, 8]]] } });
     const path = d3.geoPath(proj);
     svg.append('path').attr('class', 'grat').attr('d', path(d3.geoGraticule10()));
@@ -148,7 +148,7 @@
       const vs = groups[name].filter((v) => v.geometry);
       const rings = vs.map((v) => mainRing(v.geometry)).filter(Boolean);
       const fc = { type: 'FeatureCollection', features: rings.map((g) => ({ type: 'Feature', geometry: g })) };
-      const proj = d3.geoNaturalEarth1().rotate([-d3.geoCentroid(fc)[0], 0]).fitExtent([[20, 20], [W - 20, H - 20]], fc);
+      const proj = d3.geoEqualEarth().rotate([-d3.geoCentroid(fc)[0], 0]).fitExtent([[20, 20], [W - 20, H - 20]], fc);
       const path = d3.geoPath(proj);
       landP.then((l) => l && landG.attr('d', path(l)));
       const ds = rings.map((g) => path(g));
@@ -209,7 +209,7 @@
       const fcAll = { type: 'FeatureCollection', features: all };
       const fcFit = { type: 'FeatureCollection', features: fit };
       const c0 = d3.geoCentroid(fcAll);  // 날짜변경선 넘는 영역(태평양)도 잘리지 않게 중심 경도로 회전
-      const proj = d3.geoNaturalEarth1().rotate([-c0[0], 0]).fitExtent([[18, 18], [W - 18, H - 18]], fcFit);
+      const proj = d3.geoEqualEarth().rotate([-c0[0], 0]).fitExtent([[18, 18], [W - 18, H - 18]], fcFit);
       path = d3.geoPath(proj);
       landP.then((l) => l && gLand.attr('d', path(l)));
       gStatic.selectAll('*').remove(); gLay.selectAll('*').remove(); gRoute.selectAll('*').remove();

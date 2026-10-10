@@ -40,8 +40,7 @@ function init() {
   const gDraft = root.append('g');
   let proj = d3.geoEqualEarth(), path = d3.geoPath(proj), k = 1, land = null, fc = null, mapId = '';
   let tool = 'pen', color = '#b3261e', width = 'mid', space = false, hover = false;
-  // 학습지 모드(지명 숨김)와 바탕 레이어 고르기: 숨긴 것은 아예 그리지 않아 PNG 에도 빠진다
-  let worksheet = ls.get('sa-sketch-worksheet') === '1';
+  // 바탕 레이어 고르기: 숨긴 것은 아예 그리지 않아 PNG 에도 빠진다
   let hiddenAreas = new Set(), showLines = true, showPoints = true;
 
   d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-50m.json')
@@ -89,7 +88,6 @@ function init() {
         const xy = proj(g.coordinates);
         if (!xy) continue;
         gMap.append('circle').attr('class', 'sk-pt').attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 2.4 / k).attr('fill', '#111');
-        if (worksheet) continue;
         gMap.append('text').attr('class', 'sk-scale').attr('data-size', 10).attr('x', xy[0] + 4 / k).attr('y', xy[1] - 3 / k)
           .attr('font-family', FONT).attr('font-size', 10 / k).attr('fill', '#333').attr('paint-order', 'stroke')
           .attr('stroke', '#fff').attr('stroke-width', 2.5 / k).text(p.name || '');
@@ -273,11 +271,6 @@ function init() {
   $('skClear').addEventListener('click', () => store.clear());
   $('skFit').addEventListener('click', () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
   $('skMap').addEventListener('change', (e) => setMap(e.target.value));
-  const ws = $('skWorksheet');
-  if (ws) {
-    ws.checked = worksheet;
-    ws.addEventListener('change', () => { worksheet = ws.checked; ls.set('sa-sketch-worksheet', worksheet ? '1' : '0'); drawBase(); });
-  }
 
   const save = (name, blob) => {
     const a = document.createElement('a');
@@ -318,5 +311,5 @@ function init() {
     setMap(first.id);
   }).catch((e) => console.error('[SA] sketch', e));
 
-  window.__sketch = { store, setMap, get proj() { return proj; }, setWorksheet: (v) => { if (ws) ws.checked = v; worksheet = v; drawBase(); }, zoom: (t) => svg.call(zoom.transform, t) };
+  window.__sketch = { store, setMap, get proj() { return proj; }, zoom: (t) => svg.call(zoom.transform, t) };
 }

@@ -180,7 +180,6 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
 #scSvg .route { fill: none; stroke: #111; stroke-width: 1.8; stroke-linecap: round; }
 #scSvg .route.old { opacity: .28; }
 .sc-step { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-right: 10px; }
-@media (max-width: 900px) { .recipe.scen { grid-template-columns: 1fr; } }
 
 .r-demo.r-link { display: grid; place-items: center; min-height: 220px; background: var(--soft); }
 
@@ -202,7 +201,6 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
 .sk-input { position: absolute; font: 700 15px var(--ko); border: 1px solid var(--ink); background: rgba(255,255,255,.95); padding: 2px 6px; min-width: 140px; outline: none; }
 .sk-check { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; line-height: 1.35; }
 .sk-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--ink); cursor: pointer; flex: none; }
-.sk-ws { margin-bottom: 10px; }
 .sk-layers { border: 1px solid var(--line); background: #fff; margin-bottom: 14px; font-size: 13px; }
 .sk-layers summary { padding: 7px 10px; cursor: pointer; user-select: none; }
 .sk-layers[open] summary { border-bottom: 1px solid var(--line); }
@@ -211,3 +209,22 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
 #skLayers .grp + .grp { border-top: 0; padding-top: 0; margin-top: 0; }
 .sk-sw { width: 12px; height: 12px; flex: none; background: color-mix(in srgb, var(--c) 22%, #fff); border: 1.5px solid var(--c); }
 .sk-none { margin: 0; color: #777; font-size: 12px; }
+
+/* 좁은 화면: 시나리오·크로키 레시피도 한 줄로(아래 .recipe.scen 규칙이 미디어 규칙보다 뒤에 있어서 다시 적는다) */
+@media (max-width: 900px) { .recipe.scen { grid-template-columns: 1fr; } .recipe.scen > * { min-width: 0; } }
+
+/* 드롭다운: 브라우저 기본 모양 대신 사이트 단추와 같은 네모 테두리 + 선 꺾쇠 */
+select, select.t-q, select.sk-map, .ctrl select {
+  -webkit-appearance: none; appearance: none;
+  font: inherit; font-size: 13.5px; line-height: 1.4; color: var(--ink);
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23111' stroke-width='1.4'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E") no-repeat right 12px center / 12px 12px;
+  border: 1px solid var(--ink); border-radius: 0; padding: 9px 36px 9px 12px;
+  cursor: pointer; max-width: 100%; transition: background-color .15s;
+}
+select:hover { background-color: var(--soft); }
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+select:disabled { opacity: .45; cursor: default; }
+select optgroup { font-style: normal; font-weight: 600; color: var(--ink-2); }
+input[type="file"] { font: inherit; font-size: 12.5px; color: var(--ink-2); }
+input[type="file"]::file-selector-button { font: inherit; font-size: 12.5px; color: var(--ink); background: #fff; border: 1px solid var(--ink); border-radius: 0; padding: 6px 12px; margin-right: 10px; cursor: pointer; }
+input[type="file"]::file-selector-button:hover { background: var(--soft); }
