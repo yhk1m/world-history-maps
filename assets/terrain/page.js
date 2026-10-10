@@ -182,6 +182,7 @@ async function make(geom0, title, overlayOf) {
     viewer = createViewer($('view'), payload, { inlineUI: false });
     last = payload; savedView = null;
     viewer.setCenterVisible($('centerOn').checked);
+    document.querySelector('.t-sec[data-sec="4"]').open = true;
     syncViewUI();
     $('profileBox').hidden = true;
     sel.showProfile(null);
@@ -487,6 +488,12 @@ $('export').addEventListener('click', async () => {
   }
 });
 
+// 사이드바 칸 접고 펴기 상태를 기억(브라우저 저장이 막혀 있어도 동작)
+document.querySelectorAll('.t-sec').forEach((d) => {
+  const key = 'sa-terrain-sec' + d.dataset.sec;
+  try { const v = localStorage.getItem(key); if (v !== null) d.open = v === '1'; } catch { /* 저장 불가 */ }
+  d.addEventListener('toggle', () => { try { localStorage.setItem(key, d.open ? '1' : '0'); } catch { /* 저장 불가 */ } });
+});
 syncViewUI();
 // 확인용 훅(헤드리스 캡처)
 window.__terrain = { sel, setOverlayMap, build: () => $('build').click(), get last() { return last; }, get viewer() { return viewer; }, buildHTML, drawProfile, toggleMax };

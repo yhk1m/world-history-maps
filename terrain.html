@@ -45,7 +45,7 @@
     <h1>3D 지형</h1>
     <p class="t-lede">구역을 고르면 해저까지 담은 3D 지형을 만듭니다. 교과서 지도나 내 GeoJSON 을 그 위에 덮을 수도 있습니다.</p>
 
-    <h2><span>1</span>구역 고르기</h2>
+    <details class="t-sec" data-sec="1" open><summary><span>1</span>구역 고르기</summary>
     <div class="chips" id="modes">
       <button class="on" data-mode="draw">직접 그리기</button>
       <button data-mode="shape">틀</button>
@@ -81,13 +81,17 @@
       <ul id="histList" class="t-list"></ul>
     </div>
 
-    <h2><span>2</span>덮을 자료</h2>
+    </details>
+
+    <details class="t-sec" data-sec="2" open><summary><span>2</span>덮을 자료</summary>
     <select id="overMap" class="t-q" aria-label="덮을 교과서 지도"><option value="">교과서 지도 없음</option></select>
     <button id="wholeMap" class="btn ghost t-small" disabled>이 지도 전체를 구역으로</button>
     <label class="t-file">내 GeoJSON 덮기 <small>(크로키에서 저장한 파일 등)</small><input id="userGeo" type="file" accept=".geojson,.json,application/geo+json,application/json"></label>
     <p id="userGeoInfo" class="t-help" hidden><span></span> <button id="userGeoClear" class="t-link">빼기</button></p>
 
-    <h2><span>3</span>만들기</h2>
+    </details>
+
+    <details class="t-sec" data-sec="3" open><summary><span>3</span>만들기</summary>
     <p id="regionInfo" class="t-info">구역을 고르세요.</p>
     <div class="t-actions">
       <button id="build" class="btn" disabled>3D 만들기</button>
@@ -95,8 +99,10 @@
     </div>
     <p id="status" class="t-status" role="status"></p>
 
+    </details>
+
     <section id="viewPanel" class="t-viewpanel">
-      <h2><span>4</span>보기</h2>
+      <details class="t-sec" data-sec="4" open><summary><span>4</span>보기</summary>
       <label class="t-range">높이 과장 <input id="exag" type="range" min="1" max="20" step="0.5" value="1" disabled> <input id="exagNum" class="t-num" type="number" min="1" max="20" step="0.1" value="1" disabled aria-label="높이 과장(배)">배</label>
       <p class="t-help">1배 = 실제 높이. 숫자 칸에 직접 적어도 됩니다(1~20).</p>
       <label class="t-range">해수면 <input id="sea" type="range" min="-150" max="150" step="5" value="0" disabled> <input id="seaNum" class="t-num" type="number" min="-150" max="150" step="1" value="0" disabled aria-label="해수면(m)">m</label>
@@ -110,13 +116,16 @@
         <button id="viewPng" class="btn ghost t-small" disabled>화면 PNG</button>
       </div>
       <p class="t-help">기억한 시점은 「HTML 로 내보내기」 파일의 첫 화면이 됩니다(기억하지 않았으면 지금 보는 시점).</p>
+      </details>
     </section>
 
-    <h2><span>5</span>단면도</h2>
+    <details class="t-sec" data-sec="5"><summary><span>5</span>단면도</summary>
     <button id="profileBtn" class="btn ghost t-small">단면선 그리기</button>
     <p class="t-help">위 지도에 점을 찍어 선을 긋고 <b>오른쪽 클릭</b>(또는 더블클릭)으로 마칩니다. 3D 가 없어도 됩니다. 그래프는 3D 아래에 나옵니다.</p>
 
-    <h2><span>6</span>시나리오 3D</h2>
+    </details>
+
+    <details class="t-sec" data-sec="6"><summary><span>6</span>시나리오 3D</summary>
     <select id="scenSel" class="t-q" aria-label="시나리오"><option value="">시나리오 고르기</option></select>
     <button id="scenBuild" class="btn ghost t-small" disabled>이 시나리오로 3D 만들기</button>
     <div id="scenCtl" class="t-actions t-tight" hidden>
@@ -125,6 +134,7 @@
       <button id="scenNext" class="btn ghost t-small">다음</button>
     </div>
     <p id="scenCap" class="t-status"></p>
+    </details>
   </aside>
 
   <section class="t-stage">

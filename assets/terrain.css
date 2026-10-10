@@ -89,3 +89,15 @@ body.t-noscroll { overflow: hidden; }
 .t-profile-head .t-pf-toggles + .btn { margin-left: 0; }
 .t-pf-toggles { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-left: auto; }
 .t-pf-toggles .t-check { margin: 0; }
+
+/* 사이드바 칸: 머리글을 눌러 접고 펴기 */
+.t-sec { border-top: 1px solid var(--line); }
+.t-sec:first-of-type { margin-top: 6px; }
+.t-sec > summary { list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 13px 0 11px; display: flex; align-items: center; gap: 8px; user-select: none; }
+.t-sec > summary::-webkit-details-marker { display: none; }
+.t-sec > summary span { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+.t-sec > summary::after { content: ''; margin-left: auto; width: 7px; height: 7px; border-right: 1.4px solid var(--ink-2); border-bottom: 1.4px solid var(--ink-2); transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; }
+.t-sec:not([open]) > summary::after { transform: rotate(-45deg); }
+.t-sec > summary:hover { color: var(--accent); }
+.t-sec[open] { padding-bottom: 14px; }
+.t-dock .t-sec { border-top: 0; }
