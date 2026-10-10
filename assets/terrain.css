@@ -104,8 +104,10 @@ body.t-noscroll { overflow: hidden; }
 /* 지도·3D 모형 창: 머리글로 접고 펴기 */
 .t-stage { grid-template-rows: minmax(320px, 46vh) minmax(480px, 1fr) auto; }
 .t-stage.sel-folded { grid-template-rows: auto minmax(480px, 1fr) auto; }
-.t-stage.view-folded { grid-template-rows: minmax(320px, calc(100vh - 170px)) auto auto; }
+.t-stage.view-folded { grid-template-rows: minmax(320px, calc(100vh - 140px)) auto auto; }
 .t-stage.sel-folded.view-folded { grid-template-rows: auto auto auto; }
+/* 접은 창은 머리글 높이만 — 남는 높이를 접힌 칸에 나눠 주지 않는다(빈 공간 없이) */
+.t-stage.view-folded, .t-stage.sel-folded.view-folded { align-content: start; }
 .t-box { display: flex; flex-direction: column; }
 .t-pane-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 16px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; min-height: 44px; box-sizing: border-box; }
 .t-pane-head span { color: var(--ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

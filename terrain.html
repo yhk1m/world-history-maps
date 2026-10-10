@@ -51,8 +51,9 @@
 <div class="t-wrap">
   <aside class="t-panel">
     <h1>3D 지형</h1>
-    <p class="t-lede">구역을 고르면 해저까지 담은 3D 지형이 바로 만들어집니다. 교과서 지도만 골라도 그 지도 전체가 구역이 됩니다.</p>
+    <p class="t-lede">구역을 고르고 「3D로 보기」를 누르면 해저까지 담은 3D 지형을 만듭니다. 교과서 지도만 골라도 그 지도 전체가 구역이 됩니다.</p>
     <p id="regionInfo" class="t-info">구역을 고르세요.</p>
+    <div class="t-actions"><button id="build" class="btn" disabled>3D로 보기</button></div>
     <p id="status" class="t-status" role="status"></p>
 
     <details class="t-sec" data-sec="1" open><summary><span>1</span>구역 고르기</summary>
@@ -139,7 +140,7 @@
     </details>
 
     <details class="t-sec" data-sec="6"><summary><span>5</span>시나리오 3D</summary>
-    <select id="scenSel" class="t-q" aria-label="시나리오"><option value="">시나리오 고르기 — 고르면 바로 3D</option></select>
+    <select id="scenSel" class="t-q" aria-label="시나리오"><option value="">시나리오 고르기</option></select>
     <div id="scenCtl" class="t-actions t-tight" hidden>
       <button id="scenPrev" class="btn ghost t-small">이전</button>
       <button id="scenPlay" class="btn ghost t-small">재생</button>
@@ -160,7 +161,7 @@
     <div id="viewWrap" class="t-box t-viewwrap">
       <div class="t-pane-head"><b>3D 모형</b><span>돌리기 · 확대 · 더블클릭으로 중심 옮기기</span><button class="t-fold btn ghost t-small" data-fold="viewWrap" aria-expanded="true">접기</button></div>
       <div class="t-pane-body">
-        <div id="view" class="t-view"><p class="t-empty">구역을 고르면 3D 지형이 여기에 만들어집니다.</p></div>
+        <div id="view" class="t-view"><p class="t-empty">구역을 고르고 「3D로 보기」를 누르세요.</p></div>
         <button class="t-max-btn btn ghost t-small" data-max="viewWrap" aria-label="3D 크게 보기">크게 보기</button>
         <div id="viewDock" class="t-dock" hidden></div>
       </div>

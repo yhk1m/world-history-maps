@@ -1,5 +1,5 @@
 // © 2026 김용현
-// terrain.html 조립: 구역 고르기(웹지도) → 고도 격자 → 3D 뷰어(구역이 바뀌면 바로). 보기(높이 과장·해수면·시점·PNG), 단면도, 시나리오 3D, HTML 내보내기.
+// terrain.html 조립: 구역 고르기(웹지도) → 「3D로 보기」 → 고도 격자 → 3D 뷰어. 보기(높이 과장·해수면·시점·PNG), 단면도, 시나리오 3D, HTML 내보내기.
 
 import { createSelector } from 'whm/select';
 import { unwrapGeom, bboxOf, sizeKm, lonExtent, KM_LON, KM_LAT } from 'whm/clip';
@@ -25,8 +25,7 @@ const loadMap = (id) => {
 };
 
 let region = null, viewer = null, last = null, index = null, userFc = null, scenarios = [], scen = null;
-// 구역이 바뀌면 단추 없이 바로 3D 를 만든다(잠깐 기다렸다가 — 회전 막대처럼 연달아 바뀔 때 한 번만)
-let regionSeq = 0, regionAuto = false, settingAuto = false, holdBuild = false, buildTimer = 0, buildSeq = 0;
+let regionSeq = 0, regionAuto = false, settingAuto = false, holdBuild = false, buildSeq = 0, pendingScen = null;
 
 const sel = createSelector($('selMap'), {
   onChange(r) {
@@ -34,7 +33,9 @@ const sel = createSelector($('selMap'), {
     if (!r) { $('regionInfo').textContent = '구역을 고르세요.'; return; }
     const { w, h } = sizeKm(bboxOf(unwrapGeom(r.geom).geom));
     $('regionInfo').innerHTML = `<b>${esc(r.name)}</b> · 약 ${Math.round(w).toLocaleString()} × ${Math.round(h).toLocaleString()} km`;
-    if (!holdBuild) { clearTimeout(buildTimer); buildTimer = setTimeout(buildRegion, 450); }
+    // 3D 는 「3D로 보기」를 눌러야 만든다. 시나리오가 아닌 구역을 새로 고르면 고른 시나리오는 내려놓는다
+    if (!holdBuild && pendingScen) { pendingScen = null; scenSel.value = ''; }
+    $('build').disabled = false;
   },
   onProfile: (line) => drawProfile(line),
 });
@@ -256,7 +257,6 @@ async function make(geom0, title, overlayOf) {
 function buildRegion() {
   if (!region) return;
   stopScenario(true);
-  if (scenSel.value !== '') scenSel.value = '';
   const id = $('overMap').value;
   const mapTitle = id ? index.maps.find((m) => m.id === id).title : '';
   make(region.geom, region.name + (mapTitle && mapTitle !== region.name ? ` · ${mapTitle}` : ''), overlayFor);
@@ -479,24 +479,29 @@ function stopScenario(leave) {
   clearTimeout(scen.timer); scen.timer = null; $('scenPlay').textContent = '재생'; $('scenPlay').classList.add('ghost');
   if (leave) { scen = null; $('scenCtl').hidden = true; $('scenCap').textContent = ''; }
 }
-// 시나리오를 고르면 바로 만든다
-scenSel.addEventListener('change', async () => {
+// 시나리오를 고르면 그 범위를 구역으로 잡아 두고, 「3D로 보기」로 만든다
+scenSel.addEventListener('change', () => {
   const sc = scenSel.value === '' ? null : scenarios[+scenSel.value];
-  if (!sc) { stopScenario(true); return; }
-  stopScenario(true);
-  clearTimeout(buildTimer);
+  pendingScen = null;
+  if (!sc) return;
   const geoms = [];
   for (const f of sc.frames) { Object.values(f.areas).forEach((g) => geoms.push(g.coordinates)); (f.routes || []).forEach((r) => geoms.push(r.geometry.coordinates)); }
   (sc.static || []).forEach((st) => geoms.push(st.geometry.coordinates));
   const box = boxAround(geoms, 0.06);
   holdBuild = true;
   try { sel.setRegion(box, sc.title); } finally { holdBuild = false; }
+  pendingScen = { sc, box };
+  status('「3D로 보기」를 누르면 이 시나리오로 3D 를 만듭니다.');
+});
+async function buildScenario({ sc, box }) {
+  stopScenario(true);
   const ok = await make(box, sc.title, (bbox) => prepareOverlay(frameFC(sc, 0), bbox, PALETTE));
   if (!ok) return;
   scen = { sc, k: 0, timer: null };
   $('scenCtl').hidden = false;
   showFrame(0);
-});
+}
+$('build').addEventListener('click', () => { if (pendingScen) buildScenario(pendingScen); else buildRegion(); });
 const step = (d) => { if (scen) showFrame((scen.k + d + scen.sc.frames.length) % scen.sc.frames.length); };
 $('scenPrev').addEventListener('click', () => { stopScenario(); step(-1); });
 $('scenNext').addEventListener('click', () => { stopScenario(); step(1); });
@@ -536,7 +541,7 @@ function setFold(id, folded) {
   b.setAttribute('aria-expanded', String(!folded));
   document.querySelector('.t-stage').classList.toggle(id === 'selWrap' ? 'sel-folded' : 'view-folded', folded);
   try { localStorage.setItem('sa-terrain-fold-' + id, folded ? '1' : '0'); } catch { /* 저장 불가 */ }
-  if (!folded) setTimeout(() => sel.invalidate(), 60);
+  setTimeout(() => sel.invalidate(), 60); // 다른 창이 커지거나 줄어도 지도 크기를 다시 잰다
 }
 document.querySelectorAll('.t-fold').forEach((b) => {
   const id = b.dataset.fold;
@@ -571,4 +576,4 @@ document.querySelectorAll('.t-sec').forEach((d) => {
 });
 syncViewUI();
 // 확인용 훅(헤드리스 캡처)
-window.__terrain = { sel, setOverlayMap, build: () => { clearTimeout(buildTimer); buildRegion(); }, get last() { return last; }, get viewer() { return viewer; }, buildHTML, drawProfile, toggleMax };
+window.__terrain = { sel, setOverlayMap, build: () => $('build').click(), get last() { return last; }, get viewer() { return viewer; }, buildHTML, drawProfile, toggleMax };
