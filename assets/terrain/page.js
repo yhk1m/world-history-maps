@@ -45,6 +45,15 @@ document.querySelectorAll('#modes button').forEach((b) => b.addEventListener('cl
 document.querySelectorAll('#kinds button').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('#kinds button').forEach((x) => x.classList.toggle('on', x === b));
   sel.setKind(b.dataset.kind);
+  const rect = b.dataset.kind === 'rect';
+  $('ratios').hidden = !rect;
+  $('shapeHelp').innerHTML = rect
+    ? '네모는 한 모서리에서 <b>대각선으로 끌어</b> 그립니다(비율은 가로:세로, 실제 거리 기준). 휠은 확대.'
+    : '누른 곳이 <b>중심</b>, 끈 거리가 크기입니다. 휠은 확대.';
+}));
+document.querySelectorAll('#ratios button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#ratios button').forEach((x) => x.classList.toggle('on', x === b));
+  sel.setRatio(+b.dataset.r);
 }));
 $('rot').addEventListener('input', (e) => { $('rotv').textContent = e.target.value + '°'; sel.setRotation(+e.target.value); });
 

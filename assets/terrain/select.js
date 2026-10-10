@@ -60,49 +60,80 @@ export function createSelector(svgEl, { onChange }) {
     const p = lonLat(ev);
     if (p) { draft.push(p); drawDraft(); }
   });
+  const closeDraft = () => {
+    if (draft.length < 3) return;
+    const ring = draft.concat([draft[0]]);
+    draft = []; drawDraft();
+    set({ type: 'Polygon', coordinates: [ring] }, '직접 그린 구역');
+  };
   svg.on('dblclick.draw', (ev) => {
     if (mode !== 'draw') return;
     ev.preventDefault();
     // 더블클릭의 두 번째 click 이 같은 점을 한 번 더 넣으므로 뺀다
     if (draft.length > 1) draft.pop();
-    if (draft.length < 3) return;
-    const ring = draft.concat([draft[0]]);
-    draft = []; drawDraft();
-    set({ type: 'Polygon', coordinates: [ring] }, '직접 그린 구역');
+    closeDraft();
+  });
+  // 오른쪽 클릭 = 구역 확정(e-GIS 와 같은 방식). 그리는 중에는 브라우저 메뉴를 막는다
+  svg.on('contextmenu.draw', (ev) => {
+    if (mode !== 'draw' || !draft.length) return;
+    ev.preventDefault();
+    closeDraft();
   });
   window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && draft.length) { draft = []; drawDraft(); } });
 
-  // 틀: 누른 곳 = 중심, 끈 거리 = 크기
-  const kmBetween = (a, b) => Math.hypot((b[0] - a[0]) * KM_LON * Math.cos((a[1] * Math.PI) / 180), (b[1] - a[1]) * KM_LAT);
-  const makeShape = () => shapePolygon(shape.kind, { lon: shape.c[0], lat: shape.c[1], rKm: shape.r, rot });
+  // 틀 — 네모: 한 모서리에서 대각선으로 끌기(비율 고정 가능), 세모·원: 누른 곳 = 중심, 끈 거리 = 크기
+  const kx = (lat) => KM_LON * Math.cos((lat * Math.PI) / 180);
+  const kmBetween = (a, b) => Math.hypot((b[0] - a[0]) * kx(a[1]), (b[1] - a[1]) * KM_LAT);
+  let ratio = 0; // 가로÷세로(km 기준), 0 = 자유
+  const makeShape = () => (shape.kind === 'rect'
+    ? shapePolygon('rect', { lon: shape.c[0], lat: shape.c[1], wKm: shape.w, hKm: shape.h, rot })
+    : shapePolygon(shape.kind, { lon: shape.c[0], lat: shape.c[1], rKm: shape.r, rot }));
+  const shapeName = () => (shape.kind === 'rect'
+    ? '네모 구역'
+    : `${NAMES[shape.kind]} 구역 (반지름 ${Math.round(shape.r).toLocaleString()} km)`);
+  const big = () => (shape.kind === 'rect' ? Math.max(shape.w, shape.h) : shape.r) >= 2;
   let dragging = false;
   svg.on('pointerdown.shape', (ev) => {
-    if (mode !== 'shape') return;
+    if (mode !== 'shape' || ev.button) return;
     const c = lonLat(ev);
     if (!c) return;
-    dragging = true; shape = { kind, c, r: 1 };
-    svgEl.setPointerCapture(ev.pointerId);
+    dragging = true;
+    shape = kind === 'rect' ? { kind, a: c, c, w: 0, h: 0 } : { kind, c, r: 1 };
+    try { svgEl.setPointerCapture(ev.pointerId); } catch { /* 합성 이벤트 등 */ }
   });
   svg.on('pointermove.shape', (ev) => {
     if (!dragging) return;
     const p = lonLat(ev);
     if (!p) return;
-    shape.r = Math.max(1, kmBetween(shape.c, p));
+    if (shape.kind === 'rect') {
+      const a = shape.a;
+      let dx = (p[0] - a[0]) * kx(a[1]), dy = (p[1] - a[1]) * KM_LAT;
+      if (ratio) {
+        const sx = dx < 0 ? -1 : 1, sy = dy < 0 ? -1 : 1;
+        if (Math.abs(dx) > Math.abs(dy) * ratio) dy = sy * Math.abs(dx) / ratio;
+        else dx = sx * Math.abs(dy) * ratio;
+      }
+      shape.w = Math.abs(dx) / 2; shape.h = Math.abs(dy) / 2;
+      shape.c = [a[0] + dx / 2 / kx(a[1]), a[1] + dy / 2 / KM_LAT];
+    } else {
+      shape.r = Math.max(1, kmBetween(shape.c, p));
+    }
     gRegion.attr('d', path(rewind(makeShape())));
   });
   svg.on('pointerup.shape', () => {
     if (!dragging) return;
     dragging = false;
-    if (shape.r < 2) { shape = null; return; }
-    set(makeShape(), `${NAMES[shape.kind]} 구역 (${Math.round(shape.r)} km)`);
+    if (!big()) { shape = null; return; }
+    set(makeShape(), shapeName());
   });
 
   return {
     setMode(m) { mode = m; draft = []; drawDraft(); svgEl.dataset.mode = m; },
     setKind(kd) { kind = kd; },
+    setRatio(r) { ratio = r; },
     setRotation(deg) {
       rot = deg;
-      if (shape && mode === 'shape') set(makeShape(), `${NAMES[shape.kind]} 구역 (${Math.round(shape.r)} km)`);
+      if (shape && mode === 'shape' && big()) set(makeShape(), shapeName());
     },
     setRegion(geom, name, { zoomTo = true } = {}) {
       shape = null;

@@ -93,8 +93,8 @@ export function scanMask(geom, lons, lats) {
   return out;
 }
 
-// 틀 → Polygon. rKm: 네모는 반 변, 세모·원은 외접원 반지름. rot: 도(반시계).
-export function shapePolygon(kind, { lon, lat, rKm, rot = 0 }) {
+// 틀 → Polygon. 네모는 가로·세로 반길이 wKm·hKm(없으면 rKm 정사각), 세모·원은 외접원 반지름 rKm. rot: 도(반시계).
+export function shapePolygon(kind, { lon, lat, rKm, wKm = rKm, hKm = rKm, rot = 0 }) {
   const kx = KM_LON * Math.cos((lat * Math.PI) / 180);
   const a0 = (rot * Math.PI) / 180;
   const pt = (dx, dy) => {
@@ -103,7 +103,7 @@ export function shapePolygon(kind, { lon, lat, rKm, rot = 0 }) {
     return [lon + x / kx, lat + y / KM_LAT];
   };
   let ring;
-  if (kind === 'rect') ring = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => pt(u * rKm, v * rKm));
+  if (kind === 'rect') ring = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => pt(u * wKm, v * hKm));
   else {
     const n = kind === 'tri' ? 3 : 64;
     const start = kind === 'tri' ? Math.PI / 2 : 0;

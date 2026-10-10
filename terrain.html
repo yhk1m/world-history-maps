@@ -52,14 +52,22 @@
       <button data-mode="continent">대륙</button>
       <button data-mode="history">과거 영토</button>
     </div>
-    <div id="paneDraw" class="t-pane"><p class="t-help">지도를 클릭해 점을 찍고, <b>더블클릭</b>으로 닫습니다. Esc 는 취소. 끌면 이동, 휠은 확대.</p></div>
+    <div id="paneDraw" class="t-pane"><p class="t-help">지도를 클릭해 점을 찍고, <b>오른쪽 클릭</b>(또는 더블클릭)으로 구역을 확정합니다. Esc 는 취소. 끌면 이동, 휠은 확대.</p></div>
     <div id="paneShape" class="t-pane" hidden>
       <div class="chips" id="kinds">
         <button class="on" data-kind="rect">네모</button>
         <button data-kind="tri">세모</button>
         <button data-kind="circle">원</button>
       </div>
-      <p class="t-help">지도에서 <b>끌어</b> 그립니다 — 누른 곳이 중심, 끈 거리가 크기. 휠은 확대.</p>
+      <div class="chips t-ratios" id="ratios" aria-label="네모 비율">
+        <button class="on" data-r="0">자유</button>
+        <button data-r="1">1:1</button>
+        <button data-r="1.7778">16:9</button>
+        <button data-r="0.5625">9:16</button>
+        <button data-r="1.3333">4:3</button>
+        <button data-r="0.75">3:4</button>
+      </div>
+      <p class="t-help" id="shapeHelp">네모는 한 모서리에서 <b>대각선으로 끌어</b> 그립니다(비율은 가로:세로, 실제 거리 기준). 휠은 확대.</p>
       <label class="t-range">회전 <input id="rot" type="range" min="0" max="180" step="5" value="0"> <b id="rotv">0°</b></label>
     </div>
     <div id="paneCountry" class="t-pane" hidden>

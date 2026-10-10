@@ -62,3 +62,9 @@ test('lonExtent: 날짜변경선을 넘는 경도들은 짧은 쪽 구간', () =
   assert.deepEqual(lonExtent([-10, 0, 30]), [-10, 30]);
   assert.deepEqual(lonExtent([100, 270.13 - 360, -105.38]).map((x) => Math.round(x * 100) / 100), [100, 270.13]);
 });
+test('직사각형 틀: 가로·세로 반길이를 따로', () => {
+  const r = shapePolygon('rect', { lon: 0, lat: 0, wKm: 111.32, hKm: 2 * 110.57, rot: 0 });
+  const [w, s, e, n] = bboxOf(r);
+  assert.ok(Math.abs(e - w - 2) < 0.01, `${e - w}`);
+  assert.ok(Math.abs(n - s - 4) < 0.01, `${n - s}`);
+});
