@@ -56,3 +56,9 @@ test('scanMask 는 contains 와 같은 답을 낸다', () => {
   lats.forEach((la, j) => lons.forEach((lo, i) => { if (!!m[j * lons.length + i] !== contains(g, lo, la)) diff++; }));
   assert.equal(diff, 0);
 });
+import { lonExtent } from '../../assets/terrain/clip.js';
+test('lonExtent: 날짜변경선을 넘는 경도들은 짧은 쪽 구간', () => {
+  assert.deepEqual(lonExtent([120, 150, 179, -178, -160]), [120, 200]);
+  assert.deepEqual(lonExtent([-10, 0, 30]), [-10, 30]);
+  assert.deepEqual(lonExtent([100, 270.13 - 360, -105.38]).map((x) => Math.round(x * 100) / 100), [100, 270.13]);
+});

@@ -56,7 +56,7 @@ function label(text) {
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, sizeAttenuation: false }));
   sp.center.set(0, -0.15);
-  sp.scale.set(0.034 * (w / 44), 0.034, 1);
+  sp.scale.set(0.028 * (w / 44), 0.028, 1);
   sp.renderOrder = 10;
   return sp;
 }
@@ -76,7 +76,7 @@ export function createViewer(el, payload) {
   const { w: kw, h: kh } = sizeKm(grid.bbox);
   const S = Math.max(kw, kh);
   const relief = Math.max(0.2, (A.maxIn - A.minIn) / 1000);
-  let exag = payload.exag || Math.min(50, Math.max(1, Math.round((0.06 * Math.hypot(kw, kh)) / relief * 2) / 2));
+  let exag = payload.exag || Math.min(50, Math.max(1, Math.round((0.03 * Math.hypot(kw, kh)) / relief * 2) / 2));
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -84,7 +84,6 @@ export function createViewer(el, payload) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#f6f5f2');
   const camera = new THREE.PerspectiveCamera(40, 1, S / 2000, S * 30);
-  camera.position.set(0, S * 0.75, S * 0.95);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI * 0.49;
@@ -193,10 +192,20 @@ export function createViewer(el, payload) {
   if (hasLines) q('routes').addEventListener('change', (e) => { routes.visible = e.target.checked; });
   if (hasPts) q('points').addEventListener('change', (e) => { points.visible = e.target.checked; });
 
+  // 모형 전체가 화면에 들어오게: 위에서 비스듬히(약 45°) 본 거리
+  let fitted = false;
+  const fit = () => {
+    const vf = (camera.fov * Math.PI) / 360, hf = Math.atan(Math.tan(vf) * camera.aspect);
+    const dist = Math.max((kh * 0.5) / Math.tan(vf) * 1.25, (kw * 0.5) / Math.tan(hf) * 1.15);
+    camera.position.set(0, dist * 0.72, dist * 0.69);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  };
   const resize = () => {
     const w = el.clientWidth || 1, h = el.clientHeight || 1;
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (!fitted && el.clientWidth) { fit(); fitted = true; }
   };
   const ro = new ResizeObserver(resize);
   ro.observe(el);

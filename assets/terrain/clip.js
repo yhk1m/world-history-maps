@@ -120,3 +120,14 @@ export function sizeKm([w, s, e, n]) {
   const c = Math.cos((((s + n) / 2) * Math.PI) / 180);
   return { w: (e - w) * KM_LON * c, h: (n - s) * KM_LAT };
 }
+
+// 경도 목록을 덮는 가장 짧은 구간 [시작, 끝] — 시작은 -180~180, 끝은 시작보다 크다(180 을 넘을 수 있음).
+export function lonExtent(lons) {
+  const a = lons.map((x) => ((x % 360) + 360) % 360).sort((p, q) => p - q);
+  let gap = 360 - a[a.length - 1] + a[0], k = 0; // k: 가장 큰 빈틈 바로 뒤 원소
+  for (let i = 1; i < a.length; i++) if (a[i] - a[i - 1] > gap) { gap = a[i] - a[i - 1]; k = i; }
+  let start = a[k], end = a[(k - 1 + a.length) % a.length];
+  if (end < start) end += 360;
+  if (start >= 180) { start -= 360; end -= 360; }
+  return [start, end];
+}

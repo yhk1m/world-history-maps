@@ -1,0 +1,98 @@
+<!-- © 2026 김용현 -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D 지형 — World History Maps</title>
+<meta name="description" content="구역을 골라 해저까지 담은 3D 지형 위에 세계사 지도를 덮어 보고, 파일 하나짜리 HTML 로 내보냅니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/terrain.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+    "three/addons/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+    "whm/clip": "./assets/terrain/clip.js",
+    "whm/dem": "./assets/terrain/dem.js",
+    "whm/mesh": "./assets/terrain/mesh.js",
+    "whm/overlay": "./assets/terrain/overlay.js",
+    "whm/codec": "./assets/terrain/codec.js",
+    "whm/viewer": "./assets/terrain/viewer.js",
+    "whm/select": "./assets/terrain/select.js",
+    "whm/export": "./assets/terrain/export.js"
+  }
+}
+</script>
+</head>
+<body class="terrain">
+
+<header class="top">
+  <a class="brand" href="index.html">World History Maps</a>
+  <nav>
+    <a href="index.html#recipes">활용</a>
+    <a href="terrain.html" aria-current="page">3D 지형</a>
+  </nav>
+</header>
+
+<div class="t-wrap">
+  <aside class="t-panel">
+    <h1>3D 지형</h1>
+    <p class="t-lede">구역을 고르면 해저까지 담은 3D 지형을 만들고, 역사 지도를 그 위에 덮습니다.</p>
+
+    <h2><span>1</span>구역 고르기</h2>
+    <div class="chips" id="modes">
+      <button class="on" data-mode="draw">직접 그리기</button>
+      <button data-mode="shape">틀</button>
+      <button data-mode="country">현대 국가</button>
+      <button data-mode="continent">대륙</button>
+      <button data-mode="history">과거 영토</button>
+    </div>
+    <div id="paneDraw" class="t-pane"><p class="t-help">지도를 클릭해 점을 찍고, <b>더블클릭</b>으로 닫습니다. Esc 는 취소. 끌면 이동, 휠은 확대.</p></div>
+    <div id="paneShape" class="t-pane" hidden>
+      <div class="chips" id="kinds">
+        <button class="on" data-kind="rect">네모</button>
+        <button data-kind="tri">세모</button>
+        <button data-kind="circle">원</button>
+      </div>
+      <p class="t-help">지도에서 <b>끌어</b> 그립니다 — 누른 곳이 중심, 끈 거리가 크기. 휠은 확대.</p>
+      <label class="t-range">회전 <input id="rot" type="range" min="0" max="180" step="5" value="0"> <b id="rotv">0°</b></label>
+    </div>
+    <div id="paneCountry" class="t-pane" hidden>
+      <input id="countryQ" class="t-q" type="search" placeholder="나라 이름 (한글·영문)">
+      <ul id="countryList" class="t-list"></ul>
+    </div>
+    <div id="paneContinent" class="t-pane" hidden><ul id="continentList" class="t-list"></ul></div>
+    <div id="paneHistory" class="t-pane" hidden>
+      <input id="histQ" class="t-q" type="search" placeholder="영역 이름 (예: 몽골, 로마)">
+      <ul id="histList" class="t-list"></ul>
+    </div>
+
+    <h2><span>2</span>덮을 역사 지도</h2>
+    <select id="overMap" class="t-q"><option value="">없음</option></select>
+    <button id="wholeMap" class="btn ghost t-small" disabled>이 지도 전체를 구역으로</button>
+
+    <h2><span>3</span>만들기</h2>
+    <p id="regionInfo" class="t-info">구역을 고르세요.</p>
+    <div class="t-actions">
+      <button id="build" class="btn" disabled>3D 만들기</button>
+      <button id="export" class="btn ghost" disabled>HTML 로 내보내기</button>
+    </div>
+    <p id="status" class="t-status" role="status"></p>
+  </aside>
+
+  <section class="t-stage">
+    <svg id="selMap" class="t-sel" data-mode="draw" aria-label="구역 선택 지도"></svg>
+    <div id="view" class="t-view"><p class="t-empty">구역을 고르고 「3D 만들기」를 누르세요.</p></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script type="module" src="assets/terrain/page.js"></script>
+</body>
+</html>
