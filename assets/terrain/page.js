@@ -323,7 +323,7 @@ function showFrame(k) {
 }
 function stopScenario(leave) {
   if (!scen) return;
-  clearTimeout(scen.timer); scen.timer = null; $('scenPlay').textContent = '재생';
+  clearTimeout(scen.timer); scen.timer = null; $('scenPlay').textContent = '재생'; $('scenPlay').classList.add('ghost');
   if (leave) { scen = null; $('scenCtl').hidden = true; $('scenCap').textContent = ''; }
 }
 $('scenBuild').addEventListener('click', async () => {
@@ -347,7 +347,7 @@ $('scenNext').addEventListener('click', () => { stopScenario(); step(1); });
 $('scenPlay').addEventListener('click', () => {
   if (!scen) return;
   if (scen.timer) { stopScenario(); return; }
-  $('scenPlay').textContent = '멈춤';
+  $('scenPlay').textContent = '멈춤'; $('scenPlay').classList.remove('ghost');
   const tick = () => { step(1); scen.timer = setTimeout(tick, 2600); };
   if (scen.k === scen.sc.frames.length - 1) showFrame(0);
   scen.timer = setTimeout(tick, 1200);

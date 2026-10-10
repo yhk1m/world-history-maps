@@ -140,7 +140,8 @@
     const W = 640, H = 420;
     const landG = svg.append('path').attr('class', 'land');
     const st = svg.append('path').attr('class', 'st');
-    let timer = null;
+    let timer = null, playing = false;
+    const setPlay = (on) => { playing = on; const b = document.getElementById('mPlay'); b.textContent = on ? '멈춤' : '재생'; b.classList.toggle('ghost', !on); };
 
     function draw(name, play) {
       clearTimeout(timer);
@@ -165,8 +166,11 @@
       timer = setTimeout(next, 700);
       areaTable(vs);
     }
-    sel.addEventListener('change', () => draw(sel.value, false));
-    document.getElementById('mPlay').addEventListener('click', () => draw(sel.value, true));
+    sel.addEventListener('change', () => { setPlay(false); draw(sel.value, false); });
+    document.getElementById('mPlay').addEventListener('click', () => {
+      if (playing) { clearTimeout(timer); st.interrupt(); setPlay(false); return; }
+      setPlay(true); draw(sel.value, true);
+    });
     draw(sel.value, false);
   }
 
@@ -265,7 +269,9 @@
       const j = (k + dir + cur.frames.length) % cur.frames.length;
       show(j, true);
     }
-    function stop() { playing = false; clearTimeout(timer); document.getElementById('scPlay').textContent = '재생'; }
+    // 재생 단추: 평소 하얀색(ghost), 재생 중에는 검은색 + 「멈춤」
+    const playBtn = (id, on) => { const b = document.getElementById(id); b.textContent = on ? '멈춤' : '재생'; b.classList.toggle('ghost', !on); };
+    function stop() { playing = false; clearTimeout(timer); playBtn('scPlay', false); }
     function loop() {
       if (!playing) return;
       step(1);
@@ -275,7 +281,7 @@
     document.getElementById('scNext').addEventListener('click', () => { stop(); step(1); });
     document.getElementById('scPlay').addEventListener('click', () => {
       if (playing) return stop();
-      playing = true; document.getElementById('scPlay').textContent = '멈춤';
+      playing = true; playBtn('scPlay', true);
       if (k === cur.frames.length - 1) show(0, false);
       timer = setTimeout(loop, 300);
     });

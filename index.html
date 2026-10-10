@@ -124,7 +124,7 @@
       <div class="chips" id="scChips" role="tablist" aria-label="시나리오"></div>
       <div class="ctrl">
         <button class="btn ghost" id="scPrev">이전</button>
-        <button class="btn" id="scPlay">재생</button>
+        <button class="btn ghost" id="scPlay">재생</button>
         <button class="btn ghost" id="scNext">다음</button>
       </div>
       <ul class="sc-legend" id="scLegend"></ul>
@@ -190,7 +190,7 @@ frames.forEach((f, i) =&gt; {
       <p>같은 나라의 여러 판(시기별 영역)을 이어 붙이면 제국의 팽창과 축소를 애니메이션으로 보여 줄 수 있습니다. 나라별 모음에서 판이 둘 이상인 나라를 고르세요.</p>
       <div class="ctrl">
         <select id="mSel" aria-label="나라"></select>
-        <button class="btn" id="mPlay">재생</button>
+        <button class="btn ghost" id="mPlay">재생</button>
       </div>
       <pre class="code"><code>// d3 + flubber
 const proj = d3.geoEqualEarth().fitSize([w, h], fc);
