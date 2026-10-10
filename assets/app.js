@@ -1,6 +1,8 @@
 // © 2026 김용현
 // SpaceArchive — 히어로 모핑, 지도 탐색기(Leaflet), 모핑 레시피, 면적 표.
 (() => {
+  const ARROW_BASE = document.currentScript ? document.currentScript.src : location.href.replace(/[^/]*$/, 'assets/');
+  const arrowMod = import(new URL('arrow.js', ARROW_BASE).href); // 3D 모형과 같은 화살표 모양(assets/arrow.js)
   const DATA = 'data/';
   const CDN = 'https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/';
   const R = 6371;
@@ -94,12 +96,31 @@
     show(first);
   }
 
+  // 경로 화살표: 3D 모형과 같은 모양(채운 띠 + 넓은 삼각형 머리)을 화면 픽셀 기준으로 만들어 확대할 때마다 다시 그린다
+  let pArrows = [], arrowLayer = null;
+  const PATH_W = 3; // 몸통 폭(px)
+  function drawArrows() {
+    if (!arrowLayer) { arrowLayer = L.layerGroup().addTo(pmap); pmap.on('zoomend', drawArrows); }
+    arrowMod.then((A) => {
+      arrowLayer.clearLayers();
+      for (const g of pArrows) {
+        const lines = g.type === 'MultiLineString' ? g.coordinates : [g.coordinates];
+        lines.forEach((ln, i) => {
+          const px = ln.map(([lon, lat]) => { const q = pmap.latLngToLayerPoint([lat, lon]); return [q.x, q.y]; });
+          const ring = A.arrowRing(px, PATH_W, i === lines.length - 1);
+          if (ring.length) arrowLayer.addLayer(L.polygon(ring.map(([x, y]) => pmap.layerPointToLatLng([x, y])), { stroke: false, fillColor: '#111', fillOpacity: 1, interactive: false }));
+        });
+      }
+    }).catch(() => {});
+  }
+
   async function show(m) {
     document.querySelectorAll('.tl-item').forEach((b) => b.classList.toggle('on', b.dataset.id === m.id));
     document.getElementById('pTitle').textContent = m.title;
     document.getElementById('pMeta').textContent = `${m.vol}권 ${m.page}쪽 · 영역 ${m.counts.area} · 경로 ${m.counts.line} · 지점 ${m.counts.point}`;
     const fc = await getJSON(DATA + 'lite/maps/' + enc(m.id) + '.json');
     if (pLayer) pmap.removeLayer(pLayer);
+    pArrows = [];
     const colors = {};
     let ci = 0;
     const legend = [];
@@ -107,19 +128,21 @@
       style: (f) => {
         const p = f.properties;
         if (p._t === 'point') return {};
-        if (p._t === 'line') return { color: '#111', weight: 2, dashArray: p.category === '경계선' ? '4 4' : null };
+        if (p._t === 'line') return p.category === '경계선' ? { color: '#111', weight: 2, dashArray: '4 4' } : { color: '#111', weight: 10, opacity: 0 }; // 경로는 아래 화살표로 그리고 선은 집기 쉬운 투명 띠
         if (!(p.name in colors)) { colors[p.name] = PALETTE[ci++ % PALETTE.length]; legend.push(['area', p.name, colors[p.name]]); }
         return { color: colors[p.name], weight: 1.3, fillOpacity: 0.22 };
       },
       pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, color: '#111', weight: 1, fillColor: '#fff', fillOpacity: 1 }),
       onEachFeature: (f, l) => {
         const p = f.properties;
+        if (p._t === 'line' && p.category !== '경계선') pArrows.push(f.geometry);
         const sub = [p.period, p.category, p.year].filter(Boolean).join(' · ');
         l.bindTooltip(`<b>${p.name || ''}</b>${sub ? '<br>' + sub : ''}`, { sticky: true });
       },
     }).addTo(pmap);
     const b = pLayer.getBounds();
     if (b.isValid()) pmap.fitBounds(b, { padding: [16, 16] });
+    drawArrows();
     if (m.counts.line) legend.push(['line', '경로·경계선', '#111']);
     if (m.counts.point) legend.push(['pt', '지점', '#111']);
     document.getElementById('pLegend').innerHTML = legend.slice(0, 14)
@@ -184,12 +207,10 @@
 
 
   /* ---------- 시나리오 모핑 ---------- */
+  const ROUTE_W = 2.8; // 진격로 화살표 몸통 폭(px)
   function scenarios(list) {
     const svg = d3.select('#scSvg');
     const W = 760, H = 500;
-    svg.append('defs').append('marker').attr('id', 'arw').attr('viewBox', '0 0 10 10').attr('refX', 8).attr('refY', 5)
-      .attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto-start-reverse')
-      .append('path').attr('d', 'M0,0 L10,5 L0,10 z').attr('fill', '#111');
     const gLand = svg.append('path').attr('class', 'land');
     const gStatic = svg.append('g');
     const gLay = svg.append('g');
@@ -235,15 +256,13 @@
 
     function drawRoutes(f, animate) {
       gRoute.selectAll('path.route').classed('old', true);
-      (f.routes || []).forEach((r, i) => {
-        const p = gRoute.append('path').attr('class', 'route').attr('d', path(r.geometry)).attr('marker-end', 'url(#arw)');
-        const len = p.node().getTotalLength ? p.node().getTotalLength() : 0;
-        if (animate && len) {
-          p.attr('stroke-dasharray', `${len} ${len}`).attr('stroke-dashoffset', len)
-            .transition().delay(i * 110).duration(900).ease(d3.easeCubicOut).attr('stroke-dashoffset', 0)
-            .on('end', function () { d3.select(this).attr('stroke-dasharray', null); });
-        }
-      });
+      // 3D 모형과 같은 화살표: 채운 띠 + 끝의 넓은 삼각형 머리(마지막 조각에만)
+      arrowMod.then((A) => (f.routes || []).forEach((r, i) => {
+        const lines = A.pathToLines(path(r.geometry));
+        const dOf = (t) => lines.map((ln, li) => A.arrowPath(A.partialLine(ln, t), ROUTE_W, li === lines.length - 1)).join('');
+        const p = gRoute.append('path').attr('class', 'route').attr('d', dOf(animate ? 0 : 1));
+        if (animate) p.transition().delay(i * 110).duration(900).ease(d3.easeCubicOut).attrTween('d', () => dOf);
+      })).catch(() => {});
     }
 
     function show(j, animate) {

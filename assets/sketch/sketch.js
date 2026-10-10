@@ -4,6 +4,7 @@
 
 import { createStore } from './strokes.js';
 import { lonExtent } from '../terrain/clip.js';
+import { arrowPath } from '../arrow.js';
 
 const W = 760, H = 500;
 const AREA_COLORS = ['#b3261e', '#1f4e79', '#2e7d4f', '#b8860b', '#6a3d9a', '#00838f', '#c2185b', '#5d4037'];
@@ -35,7 +36,6 @@ if (svgEl) init();
 
 function init() {
   const svg = d3.select(svgEl).attr('viewBox', `0 0 ${W} ${H}`).style('touch-action', 'none');
-  const defs = svg.append('defs');
   const bg = svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#f6f5f2');
   const root = svg.append('g');
   const gLand = root.append('path').attr('fill', '#e3e1db');
@@ -55,16 +55,9 @@ function init() {
     .on('zoom', (ev) => { k = ev.transform.k; root.attr('transform', ev.transform); scaleText(); });
   svg.call(zoom).on('dblclick.zoom', null);
 
-  // 화살촉: 색마다 하나
-  const marker = (c) => {
-    const id = 'skArw' + c.slice(1);
-    if (defs.select('#' + id).empty()) {
-      defs.append('marker').attr('id', id).attr('viewBox', '0 0 10 10').attr('refX', 7).attr('refY', 5)
-        .attr('markerWidth', 5).attr('markerHeight', 5).attr('orient', 'auto-start-reverse')
-        .append('path').attr('d', 'M0,0 L10,5 L0,10 z').attr('fill', c);
-    }
-    return `url(#${id})`;
-  };
+  // 화살표: 3D 모형과 같은 모양(채운 띠 + 넓은 삼각형 머리, assets/arrow.js). 화면 폭이 같게 확대 배율 k 로 나눈다
+  const ARROW_K = 1.5; // 펜 굵기 대비 몸통 폭
+  const arrowD = (px, w) => arrowPath(px, (w * ARROW_K) / k);
 
   function drawBase() {
     gLand.attr('d', land ? path(land) : null);
@@ -110,13 +103,17 @@ function init() {
         .text(s.text);
       return;
     }
-    const pts = s.tool === 'arrow' ? [s.coords[0], s.coords[s.coords.length - 1]] : s.coords;
-    const d = d3.line()(pts.map((c) => proj(c)).filter(Boolean));
+    if (s.tool === 'arrow') {
+      const px = [s.coords[0], s.coords[s.coords.length - 1]].map((c) => proj(c)).filter(Boolean);
+      g.append('path').datum({ px, w: s.width }).attr('data-id', s.id).attr('class', 'sk-arrow')
+        .attr('d', arrowD(px, s.width)).attr('fill', s.color).attr('stroke', 'none');
+      return;
+    }
+    const d = d3.line()(s.coords.map((c) => proj(c)).filter(Boolean));
     const el = g.append('path').attr('data-id', s.id).attr('d', d).attr('fill', 'none').attr('stroke', s.color)
       .attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('vector-effect', 'non-scaling-stroke');
     if (s.tool === 'hi') el.attr('stroke-width', s.width * 4).attr('stroke-opacity', 0.35);
     else el.attr('stroke-width', s.width);
-    if (s.tool === 'arrow') el.attr('marker-end', marker(s.color));
   }
   function drawInk() {
     gInk.selectAll('*').remove();
@@ -130,6 +127,7 @@ function init() {
       t.attr('font-size', sz / k).attr('stroke-width', (sz > 12 ? 3 : 2.5) / k);
     });
     root.selectAll('.sk-pt').attr('r', 2.4 / k);
+    root.selectAll('.sk-arrow').attr('d', (a) => arrowD(a.px, a.w));
   }
 
   // 바탕 지도 바꾸기: 그리던 것은 지도별로 브라우저에 기억

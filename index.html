@@ -140,7 +140,7 @@
 frames.forEach((f, i) =&gt; {
   for (const key in f.areas)
     morph(layer[key], frames[i - 1]?.areas[key], f.areas[key]);
-  drawRoutes(f.routes);   // stroke-dashoffset 으로 선을 그려 나감
+  drawRoutes(f.routes);   // 3D 모형과 같은 화살표(띠 + 넓은 머리)가 앞으로 자라며 그려짐
 });</code></pre>
     </div>
     <figure class="r-demo"><svg id="scSvg" viewBox="0 0 760 500"></svg>

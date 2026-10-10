@@ -2,7 +2,7 @@
 // 3D 지형 뷰어 — 페이지(terrain.html)와 내보낸 HTML 이 같이 쓴다.
 // payload = { title, grid:{w,h,bbox,data}, region(geom), overlay(prepareOverlay 결과|null), credits:[문자열],
 //             exag?, seaLevel?, view?(getView 결과) }
-// opts.inlineUI = false 면 화면 위 높이 과장·해수면·중심점 조절을 숨긴다(페이지가 사이드바에서 set○○ 로 조절).
+// opts.inlineUI = false 면 화면 위 높이 과장·해수면 조절을 숨긴다(페이지가 사이드바에서 set○○ 로 조절).
 // 화면을 더블클릭하면 그 땅 위 지점이 회전 중심이 된다(e-GIS 와 같은 방식).
 
 import * as THREE from 'three';
@@ -264,14 +264,12 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     <div class="v-ctl"></div><div class="v-cred">${(payload.credits || []).map(esc).join('<br>')}</div>`;
   const ctl = ui.querySelector('.v-ctl');
   const q = (k) => ctl.querySelector(`[data-k="${k}"]`);
-  let markOn = true;
   function renderCtl() {
     const hasAreas = !!(overlay && overlay.areas.length), hasLines = draped.some((d) => d.runs.length), hasPts = pins.length > 0;
     ctl.innerHTML = `
       ${inlineUI ? `<label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <input type="number" min="1" max="${MAX_EXAG}" step="0.1" value="${exag}" data-k="exagv" aria-label="높이 과장(배)">×</label>` : ''}
       ${inlineUI && hasSea ? `<label>해수면 <input type="range" min="${SEA_MIN}" max="${SEA_MAX}" step="5" value="${seaLevel}" data-k="seaLv"> <b data-k="seaLvv">${seaLevel} m</b></label>` : ''}
       <div class="v-row">
-        ${inlineUI ? `<label title="화면을 더블클릭하면 그 자리가 회전 중심이 됩니다"><input type="checkbox" ${markOn ? 'checked' : ''} data-k="center">중심점</label>` : ''}
         ${hasSea ? `<label><input type="checkbox" ${seaOn ? 'checked' : ''} data-k="sea">해수면</label>` : ''}
         ${hasAreas ? `<label><input type="checkbox" ${areasOn ? 'checked' : ''} data-k="areas">영역</label>` : ''}
         ${hasLines ? `<label><input type="checkbox" ${routes.visible ? 'checked' : ''} data-k="routes">경로</label>` : ''}
@@ -286,7 +284,6 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
       q('exagv').addEventListener('keydown', (e) => { if (e.key === 'Enter') setExag(+e.target.value); });
     }
     if (q('seaLv')) q('seaLv').addEventListener('input', (e) => setSeaLevel(+e.target.value));
-    if (q('center')) q('center').addEventListener('change', (e) => setCenterVisible(e.target.checked));
     if (q('sea')) q('sea').addEventListener('change', (e) => { seaOn = e.target.checked; placeSea(); placeOverlay(); });
     if (q('areas')) q('areas').addEventListener('change', (e) => { areasOn = e.target.checked; paintAreas(); });
     if (q('routes')) q('routes').addEventListener('change', (e) => { routes.visible = e.target.checked; });
@@ -294,8 +291,17 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
   }
 
   // 회전 중심점: 땅 위 고도(m)를 기억해 두었다가 높이 과장이 바뀌어도 땅에 붙어 있게
+  // 중심점은 돌리거나 옮기는 동안(과 더블클릭 직후)에만 보인다 — 켜고 끄는 단추 없이
   const mark = centerSprite();
+  mark.visible = false;
   scene.add(mark);
+  let markAlways = false, markDrag = false, markTimer = 0;
+  const flashMark = (ms) => {
+    mark.visible = true; clearTimeout(markTimer);
+    markTimer = setTimeout(() => { mark.visible = markAlways || markDrag; }, ms);
+  };
+  controls.addEventListener('start', () => { markDrag = true; clearTimeout(markTimer); mark.visible = true; });
+  controls.addEventListener('end', () => { markDrag = false; flashMark(700); });
   let centerM = 0;
   const keepCenter = () => {
     const dy = (centerM / 1000) * exag - controls.target.y;
@@ -310,7 +316,7 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     placeSea(); placeOverlay();
     if (q('seaLv')) { q('seaLv').value = seaLevel; q('seaLvv').textContent = seaLevel + ' m'; }
   }
-  function setCenterVisible(on) { markOn = on; mark.visible = on; if (q('center')) q('center').checked = on; }
+  function setCenterVisible(on) { markAlways = !!on; mark.visible = markAlways || markDrag; }
   function setOverlay(ov) { overlay = ov || null; prepare(); paintAreas(); placeOverlay(); renderCtl(); }
   // 단면선: [[lon,lat],…] 를 지형 위에 분홍 선으로(구역 밖 구간은 빼고), 끝점에 A·B
   function setProfile(coords) {
@@ -328,6 +334,7 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     const hit = ray.intersectObject(top, false)[0];
     if (!hit) return;
     centerM = (hit.point.y / exag) * 1000;
+    flashMark(1400);
     const from = controls.target.clone(), to = hit.point.clone(), cam0 = camera.position.clone(), t0 = performance.now();
     anim = (now) => {
       const t = Math.min(1, (now - t0) / 450), e = 1 - (1 - t) ** 3;

@@ -1,5 +1,5 @@
 // © 2026 김용현
-// terrain.html 조립: 구역 고르기(웹지도) → 고도 격자 → 3D 뷰어. 보기(높이 과장·해수면·시점·PNG), 단면도, 시나리오 3D, HTML 내보내기.
+// terrain.html 조립: 구역 고르기(웹지도) → 고도 격자 → 3D 뷰어(구역이 바뀌면 바로). 보기(높이 과장·해수면·시점·PNG), 단면도, 시나리오 3D, HTML 내보내기.
 
 import { createSelector } from 'whm/select';
 import { unwrapGeom, bboxOf, sizeKm, lonExtent, KM_LON, KM_LAT } from 'whm/clip';
@@ -24,15 +24,17 @@ const loadMap = (id) => {
   return mapCache.get(id);
 };
 
-let region = null, viewer = null, last = null, index = null, userFc = null, savedView = null, scenarios = [], scen = null;
+let region = null, viewer = null, last = null, index = null, userFc = null, scenarios = [], scen = null;
+// 구역이 바뀌면 단추 없이 바로 3D 를 만든다(잠깐 기다렸다가 — 회전 막대처럼 연달아 바뀔 때 한 번만)
+let regionSeq = 0, regionAuto = false, settingAuto = false, holdBuild = false, buildTimer = 0, buildSeq = 0;
 
 const sel = createSelector($('selMap'), {
   onChange(r) {
-    region = r;
+    region = r; regionSeq++; regionAuto = settingAuto;
     if (!r) { $('regionInfo').textContent = '구역을 고르세요.'; return; }
     const { w, h } = sizeKm(bboxOf(unwrapGeom(r.geom).geom));
     $('regionInfo').innerHTML = `<b>${esc(r.name)}</b> · 약 ${Math.round(w).toLocaleString()} × ${Math.round(h).toLocaleString()} km`;
-    $('build').disabled = false;
+    if (!holdBuild) { clearTimeout(buildTimer); buildTimer = setTimeout(buildRegion, 450); }
   },
   onProfile: (line) => drawProfile(line),
 });
@@ -52,15 +54,12 @@ document.querySelectorAll('#kinds button').forEach((b) => b.addEventListener('cl
   document.querySelectorAll('#kinds button').forEach((x) => x.classList.toggle('on', x === b));
   sel.setKind(b.dataset.kind);
   const rect = b.dataset.kind === 'rect';
-  $('ratios').hidden = !rect;
+  $('ratioRow').hidden = !rect;
   $('shapeHelp').innerHTML = rect
     ? '네모는 한 모서리에서 <b>대각선으로 끌어</b> 그립니다(비율은 가로:세로, 실제 거리 기준). 휠은 확대.'
     : '누른 곳이 <b>중심</b>, 끈 거리가 크기입니다. 휠은 확대.';
 }));
-document.querySelectorAll('#ratios button').forEach((b) => b.addEventListener('click', () => {
-  document.querySelectorAll('#ratios button').forEach((x) => x.classList.toggle('on', x === b));
-  sel.setRatio(+b.dataset.r);
-}));
+$('ratios').addEventListener('change', (e) => sel.setRatio(+e.target.value));
 $('rot').addEventListener('input', (e) => { $('rotv').textContent = e.target.value + '°'; sel.setRotation(+e.target.value); });
 
 // 검색 목록: items = [{label, sub, pick()}]
@@ -146,21 +145,28 @@ async function refreshOverlay() {
   last.overlay = await overlayFor(last.grid.bbox);
   viewer.setOverlay(last.overlay);
 }
+// 덮을 자료를 고르면: 사람이 고른 구역이 없을 때(또는 앞서 자동으로 잡힌 구역이면) 그 자료 전체를 구역으로
+function autoRegion(fc, name) {
+  if (region && !regionAuto) return false;
+  const geoms = fc.features.filter((f) => f.geometry).map((f) => f.geometry.coordinates);
+  if (!geoms.length) return false;
+  settingAuto = true;
+  try { sel.setRegion(boxAround(geoms), name); } finally { settingAuto = false; }
+  return true;
+}
 function setOverlayMap(id) {
   $('overMap').value = id;
-  $('wholeMap').disabled = !id;
-  if (!id) sel.showOverlay(null);
-  else loadMap(id).then((fc) => { if ($('overMap').value === id) sel.showOverlay(fc); });
-  refreshOverlay();
+  if (!id) { sel.showOverlay(null); refreshOverlay(); return; }
+  const seq = regionSeq;
+  loadMap(id).then((fc) => {
+    if ($('overMap').value !== id) return;
+    sel.showOverlay(fc);
+    // 그 사이 사람이 구역을 골랐으면(과거 영토 목록 등) 그대로 둔다
+    if (regionSeq === seq && autoRegion(fc, index.maps.find((x) => x.id === id).title)) return;
+    refreshOverlay();
+  });
 }
 $('overMap').addEventListener('change', (e) => setOverlayMap(e.target.value));
-$('wholeMap').addEventListener('click', async () => {
-  const id = $('overMap').value;
-  const m = index.maps.find((x) => x.id === id);
-  if (!m) return;
-  const fc = await loadMap(id);
-  sel.setRegion(boxAround(fc.features.filter((f) => f.geometry).map((f) => f.geometry.coordinates)), m.title);
-});
 $('userGeo').addEventListener('change', async (e) => {
   const f = e.target.files[0];
   if (!f) return;
@@ -171,7 +177,7 @@ $('userGeo').addEventListener('change', async (e) => {
     userFc = { type: 'FeatureCollection', features: feats };
     $('userGeoInfo').hidden = false;
     $('userGeoInfo').querySelector('span').textContent = `${f.name} · 도형 ${feats.length}개`;
-    refreshOverlay();
+    if (!autoRegion(userFc, f.name.replace(/\.(geo)?json$/i, ''))) refreshOverlay();
   } catch (err) {
     status('GeoJSON 을 읽지 못했습니다: ' + err.message);
   }
@@ -219,17 +225,18 @@ async function make(geom0, title, overlayOf) {
   const { w, h } = sizeKm(bbox);
   if (Math.max(w, h) < 2) { status('구역이 너무 작습니다(한 변 2 km 이상).'); return false; }
   const wide = bbox[2] - bbox[0] > 180;
-  $('build').disabled = true; $('export').disabled = true; $('scenBuild').disabled = true;
+  const my = ++buildSeq;
+  $('export').disabled = true;
   status('고도 타일을 받는 중…');
   try {
-    const grid = await loadGrid(bbox, { onProgress: (d, t) => status(`고도 타일 ${d}/${t}`) });
+    const grid = await loadGrid(bbox, { onProgress: (d, t) => { if (my === buildSeq) status(`고도 타일 ${d}/${t}`); } });
     const overlay = await overlayOf(bbox);
+    if (my !== buildSeq) return false; // 그 사이 다른 구역을 골랐다
     const payload = { title, grid, region: geom, overlay, credits: CREDITS };
     if (viewer) viewer.dispose();
     if ($('viewWrap').classList.contains('t-folded')) setFold('viewWrap', false);
     viewer = createViewer($('view'), payload, { inlineUI: false });
-    last = payload; savedView = null;
-    viewer.setCenterVisible($('centerOn').checked);
+    last = payload;
     document.querySelector('.t-sec[data-sec="4"]').open = true;
     syncViewUI();
     $('profileBox').hidden = true;
@@ -240,25 +247,26 @@ async function make(geom0, title, overlayOf) {
     return true;
   } catch (e) {
     console.error('[3D]', e);
-    status('지형을 만들지 못했습니다: ' + e.message);
+    if (my === buildSeq) status('지형을 만들지 못했습니다: ' + e.message);
     return false;
   } finally {
-    $('build').disabled = !region; $('export').disabled = !viewer; $('scenBuild').disabled = $('scenSel').value === '';
+    $('export').disabled = !viewer;
   }
 }
-$('build').addEventListener('click', () => {
+function buildRegion() {
   if (!region) return;
   stopScenario(true);
+  if (scenSel.value !== '') scenSel.value = '';
   const id = $('overMap').value;
   const mapTitle = id ? index.maps.find((m) => m.id === id).title : '';
   make(region.geom, region.name + (mapTitle && mapTitle !== region.name ? ` · ${mapTitle}` : ''), overlayFor);
-});
+}
+const scenSel = $('scenSel');
 
 // 보기: 높이 과장·해수면(슬라이더와 숫자 칸)·중심점·시점·PNG
-const viewInputs = ['exag', 'exagNum', 'sea', 'seaNum', 'viewSave', 'viewFit', 'viewPng'];
+const viewInputs = ['exag', 'exagNum', 'sea', 'seaNum', 'viewFit', 'viewPng', 'export'];
 function syncViewUI() {
   for (const k of viewInputs) $(k).disabled = !viewer;
-  $('viewLoad').disabled = !viewer || !savedView;
   if (!viewer) return;
   $('exag').max = $('exagNum').max = MAX_EXAG;
   $('exag').value = viewer.exag; if (document.activeElement !== $('exagNum')) $('exagNum').value = viewer.exag;
@@ -275,9 +283,6 @@ const numInput = (id, apply) => {
 numInput('exagNum', (v) => viewer.setExag(v));
 $('sea').addEventListener('input', (e) => { if (viewer) { viewer.setSeaLevel(+e.target.value); syncViewUI(); } });
 numInput('seaNum', (v) => viewer.setSeaLevel(v));
-$('centerOn').addEventListener('change', (e) => { if (viewer) viewer.setCenterVisible(e.target.checked); });
-$('viewSave').addEventListener('click', () => { savedView = viewer.getView(); syncViewUI(); status('지금 시점을 기억했습니다. 내보낸 HTML 도 이 시점으로 열립니다.'); });
-$('viewLoad').addEventListener('click', () => { if (savedView) { viewer.setView(savedView); syncViewUI(); } });
 $('viewFit').addEventListener('click', () => viewer.fit());
 const fileName = (ext) => `3D지형_${(last && last.title) || '구역'}`.replace(/[\\/:*?"<>|·]+/g, '_').replace(/\s+/g, '') + ext;
 $('viewPng').addEventListener('click', () => {
@@ -454,7 +459,6 @@ $('profilePng').addEventListener('click', async () => {
 $('profileClose').addEventListener('click', () => { $('profileBox').hidden = true; sel.showProfile(null); if (viewer) viewer.setProfile(null); });
 
 // 시나리오 3D: 모든 프레임을 덮는 구역 하나로 지형을 만들고, 프레임마다 덮을 자료만 바꾼다
-$('scenSel').addEventListener('change', (e) => { $('scenBuild').disabled = e.target.value === ''; });
 // 초록 영역은 지형 고도색에 묻히므로 3D 에서는 보라로
 const on3D = (c) => (/^#(2e7d4f|7cb342)$/i.test(c) ? '#6a3d9a' : c);
 const frameFC = (sc, k) => {
@@ -475,15 +479,18 @@ function stopScenario(leave) {
   clearTimeout(scen.timer); scen.timer = null; $('scenPlay').textContent = '재생'; $('scenPlay').classList.add('ghost');
   if (leave) { scen = null; $('scenCtl').hidden = true; $('scenCap').textContent = ''; }
 }
-$('scenBuild').addEventListener('click', async () => {
-  const sc = scenarios[+$('scenSel').value];
-  if (!sc) return;
+// 시나리오를 고르면 바로 만든다
+scenSel.addEventListener('change', async () => {
+  const sc = scenSel.value === '' ? null : scenarios[+scenSel.value];
+  if (!sc) { stopScenario(true); return; }
   stopScenario(true);
+  clearTimeout(buildTimer);
   const geoms = [];
   for (const f of sc.frames) { Object.values(f.areas).forEach((g) => geoms.push(g.coordinates)); (f.routes || []).forEach((r) => geoms.push(r.geometry.coordinates)); }
   (sc.static || []).forEach((st) => geoms.push(st.geometry.coordinates));
   const box = boxAround(geoms, 0.06);
-  sel.setRegion(box, sc.title);
+  holdBuild = true;
+  try { sel.setRegion(box, sc.title); } finally { holdBuild = false; }
   const ok = await make(box, sc.title, (bbox) => prepareOverlay(frameFC(sc, 0), bbox, PALETTE));
   if (!ok) return;
   scen = { sc, k: 0, timer: null };
@@ -539,13 +546,13 @@ document.querySelectorAll('.t-fold').forEach((b) => {
   b.addEventListener('click', () => setFold(id, !$(id).classList.contains('t-folded')));
 });
 
-// HTML 내보내기: 지금 덮은 자료·높이 과장·해수면·(기억한) 시점 그대로
+// HTML 내보내기: 지금 덮은 자료·높이 과장·해수면·시점 그대로
 $('export').addEventListener('click', async () => {
   if (!last || !viewer) return;
   $('export').disabled = true;
   status('HTML 파일을 만드는 중…');
   try {
-    const html = await buildHTML({ ...last, exag: viewer.exag, seaLevel: viewer.seaLevel, view: savedView || viewer.getView() });
+    const html = await buildHTML({ ...last, exag: viewer.exag, seaLevel: viewer.seaLevel, view: viewer.getView() });
     download(fileName('.html'), html);
     status(`내보냈습니다 (${(html.length / 1e6).toFixed(1)} MB).`);
   } catch (e) {
@@ -564,4 +571,4 @@ document.querySelectorAll('.t-sec').forEach((d) => {
 });
 syncViewUI();
 // 확인용 훅(헤드리스 캡처)
-window.__terrain = { sel, setOverlayMap, build: () => $('build').click(), get last() { return last; }, get viewer() { return viewer; }, buildHTML, drawProfile, toggleMax };
+window.__terrain = { sel, setOverlayMap, build: () => { clearTimeout(buildTimer); buildRegion(); }, get last() { return last; }, get viewer() { return viewer; }, buildHTML, drawProfile, toggleMax };

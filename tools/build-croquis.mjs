@@ -12,6 +12,7 @@ const stripHeader = (s) => s.replace(/^\/\/ © .*\r?\n/, '').replace(/^\/\* © .
 const strokes = stripHeader(read('assets/sketch/strokes.js')).replace(/^export /gm, '');
 const clip = read('assets/terrain/clip.js');
 const lonExtent = clip.slice(clip.indexOf('// 경도 목록을 덮는 가장 짧은 구간')).replace(/^export /gm, '');
+const arrow = stripHeader(read('assets/arrow.js')).replace(/^export /gm, '');
 const sketch = stripHeader(read('assets/sketch/sketch.js')).replace(/^import .*\r?\n/gm, ''); // 줄바꿈이 CRLF 여도
 const seedJs = stripHeader(read('assets/seed.js'));
 const seedCss = stripHeader(read('assets/seed.css'));
@@ -115,6 +116,8 @@ ${seedJs}
 <script type="module">
 /* ── 획 저장소 (assets/sketch/strokes.js) ── */
 ${strokes}
+/* ── 화살표 모양 (assets/arrow.js, 3D 모형과 같은 모양) ── */
+${arrow}
 /* ── 경도 구간 (assets/terrain/clip.js 의 lonExtent) ── */
 ${lonExtent}
 /* ── 크로키 (assets/sketch/sketch.js) ── */

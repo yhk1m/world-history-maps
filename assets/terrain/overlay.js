@@ -30,7 +30,7 @@ export function prepareOverlay(fc, bbox, palette) {
       if (hit(bboxOf(geom), bbox)) out.areas.push({ name: p.name || '', color, geom, ...(p.fill === false ? { noFill: true } : {}) });
     } else if (t === 'line') {
       const parts = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
-      const arrow = p._t === 'line' || p.tool === 'arrow' || (!p.tool && !p._t);
+      const arrow = (p._t === 'line' && p.category !== '경계선') || p.tool === 'arrow' || (!p.tool && !p._t); // 경계선은 화살촉 없이
       for (const c of parts) {
         const u = unwrapRing(c, lon0);
         if (hit(lineBBox(u), bbox)) out.lines.push({ name: p.name || '', coords: u, color: p.color || '#111111', arrow });

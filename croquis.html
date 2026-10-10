@@ -311,6 +311,77 @@ function createStore() {
   };
 }
 
+/* ── 화살표 모양 (assets/arrow.js, 3D 모형과 같은 모양) ── */
+// 2D 화살표 모양 — 3D 모형의 화살표(assets/terrain/mesh.js flatArrow)와 같은 모양을 SVG 채움 경로로.
+// 폭 width 의 띠 + 끝의 넓은 삼각형 머리(머리 길이 = 폭 × 3.2, 머리 폭 = 폭 × 2.6).
+// 선이 머리보다 짧으면 머리·띠를 함께 줄인다. 점은 화면 좌표 [[x, y], …].
+
+const ARROW_HEAD_L = 3.2;
+const ARROW_HEAD_W = 2.6;
+
+const fmt = (v) => (Math.round(v * 100) / 100).toString();
+
+/** 화살표 테두리 고리 [[x, y], …] (head = false 면 머리 없는 띠) */
+function arrowRing(points, width, head = true) {
+  const pts = (points || []).filter((p, i, a) => p && (i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1e-6));
+  if (pts.length < 2) return [];
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const total = cum[cum.length - 1];
+  let w = width, hl = width * ARROW_HEAD_L, hw = width * ARROW_HEAD_W;
+  if (head && total < hl * 1.25) { const k = total / (hl * 1.25); w *= k; hl *= k; hw *= k; }
+  let shaft = pts;
+  if (head) {
+    const cut = total - hl;
+    let i = 1; while (i < pts.length - 1 && cum[i] < cut) i++;
+    const t = (cut - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1);
+    shaft = pts.slice(0, i).concat([[pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t]]);
+  }
+  const normal = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l]; };
+  const left = [], right = [];
+  shaft.forEach((p, i) => {
+    const [nx, ny] = normal(shaft[Math.max(0, i - 1)], shaft[Math.min(shaft.length - 1, i + 1)]);
+    left.push([p[0] + (nx * w) / 2, p[1] + (ny * w) / 2]);
+    right.push([p[0] - (nx * w) / 2, p[1] - (ny * w) / 2]);
+  });
+  const ring = left.slice();
+  if (head) {
+    const B = shaft[shaft.length - 1], T = pts[pts.length - 1], [nx, ny] = normal(B, T);
+    ring.push([B[0] + (nx * hw) / 2, B[1] + (ny * hw) / 2], [T[0], T[1]], [B[0] - (nx * hw) / 2, B[1] - (ny * hw) / 2]);
+  }
+  return ring.concat(right.reverse());
+}
+
+/** 화살표 채움 경로(SVG d). 점이 모자라면 '' */
+function arrowPath(points, width, head = true) {
+  const r = arrowRing(points, width, head);
+  return r.length ? 'M' + r.map((p) => fmt(p[0]) + ',' + fmt(p[1])).join('L') + 'Z' : '';
+}
+
+/** 선의 앞쪽 t(0~1) 만큼만 — 화살표가 그려져 나가는 애니메이션용 */
+function partialLine(points, t) {
+  const pts = (points || []).filter(Boolean);
+  if (pts.length < 2 || t >= 1) return pts;
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const want = cum[cum.length - 1] * Math.max(0, t);
+  let i = 1; while (i < pts.length - 1 && cum[i] < want) i++;
+  const s = (want - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1);
+  return pts.slice(0, i).concat([[pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * s, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * s]]);
+}
+
+/** SVG 경로 문자열(d3.geoPath 가 만든 M…L…) → 선 조각들 [[[x, y], …], …] */
+function pathToLines(d) {
+  const out = [];
+  for (const seg of String(d || '').split(/(?=M)/)) {
+    const nums = seg.replace(/[MLZ]/g, ' ').trim().split(/[\s,]+/).map(Number);
+    const pts = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) if (Number.isFinite(nums[i]) && Number.isFinite(nums[i + 1])) pts.push([nums[i], nums[i + 1]]);
+    if (pts.length > 1) out.push(pts);
+  }
+  return out;
+}
+
 /* ── 경도 구간 (assets/terrain/clip.js 의 lonExtent) ── */
 // 경도 목록을 덮는 가장 짧은 구간 [시작, 끝] — 시작은 -180~180, 끝은 시작보다 크다(180 을 넘을 수 있음).
 function lonExtent(lons) {
@@ -358,7 +429,6 @@ if (svgEl) init();
 
 function init() {
   const svg = d3.select(svgEl).attr('viewBox', `0 0 ${W} ${H}`).style('touch-action', 'none');
-  const defs = svg.append('defs');
   const bg = svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#f6f5f2');
   const root = svg.append('g');
   const gLand = root.append('path').attr('fill', '#e3e1db');
@@ -378,16 +448,9 @@ function init() {
     .on('zoom', (ev) => { k = ev.transform.k; root.attr('transform', ev.transform); scaleText(); });
   svg.call(zoom).on('dblclick.zoom', null);
 
-  // 화살촉: 색마다 하나
-  const marker = (c) => {
-    const id = 'skArw' + c.slice(1);
-    if (defs.select('#' + id).empty()) {
-      defs.append('marker').attr('id', id).attr('viewBox', '0 0 10 10').attr('refX', 7).attr('refY', 5)
-        .attr('markerWidth', 5).attr('markerHeight', 5).attr('orient', 'auto-start-reverse')
-        .append('path').attr('d', 'M0,0 L10,5 L0,10 z').attr('fill', c);
-    }
-    return `url(#${id})`;
-  };
+  // 화살표: 3D 모형과 같은 모양(채운 띠 + 넓은 삼각형 머리, assets/arrow.js). 화면 폭이 같게 확대 배율 k 로 나눈다
+  const ARROW_K = 1.5; // 펜 굵기 대비 몸통 폭
+  const arrowD = (px, w) => arrowPath(px, (w * ARROW_K) / k);
 
   function drawBase() {
     gLand.attr('d', land ? path(land) : null);
@@ -433,13 +496,17 @@ function init() {
         .text(s.text);
       return;
     }
-    const pts = s.tool === 'arrow' ? [s.coords[0], s.coords[s.coords.length - 1]] : s.coords;
-    const d = d3.line()(pts.map((c) => proj(c)).filter(Boolean));
+    if (s.tool === 'arrow') {
+      const px = [s.coords[0], s.coords[s.coords.length - 1]].map((c) => proj(c)).filter(Boolean);
+      g.append('path').datum({ px, w: s.width }).attr('data-id', s.id).attr('class', 'sk-arrow')
+        .attr('d', arrowD(px, s.width)).attr('fill', s.color).attr('stroke', 'none');
+      return;
+    }
+    const d = d3.line()(s.coords.map((c) => proj(c)).filter(Boolean));
     const el = g.append('path').attr('data-id', s.id).attr('d', d).attr('fill', 'none').attr('stroke', s.color)
       .attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('vector-effect', 'non-scaling-stroke');
     if (s.tool === 'hi') el.attr('stroke-width', s.width * 4).attr('stroke-opacity', 0.35);
     else el.attr('stroke-width', s.width);
-    if (s.tool === 'arrow') el.attr('marker-end', marker(s.color));
   }
   function drawInk() {
     gInk.selectAll('*').remove();
@@ -453,6 +520,7 @@ function init() {
       t.attr('font-size', sz / k).attr('stroke-width', (sz > 12 ? 3 : 2.5) / k);
     });
     root.selectAll('.sk-pt').attr('r', 2.4 / k);
+    root.selectAll('.sk-arrow').attr('d', (a) => arrowD(a.px, a.w));
   }
 
   // 바탕 지도 바꾸기: 그리던 것은 지도별로 브라우저에 기억
