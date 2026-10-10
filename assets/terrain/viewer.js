@@ -1,6 +1,7 @@
 // © 2026 김용현
 // 3D 지형 뷰어 — 페이지(terrain.html)와 내보낸 HTML 이 같이 쓴다.
 // payload = { title, grid:{w,h,bbox,data}, region(geom), overlay(prepareOverlay 결과|null), credits:[문자열], exag? }
+// opts.exagUI = false 면 화면 위 높이 과장 슬라이더를 숨긴다(페이지가 사이드바에서 setExag 로 조절).
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -12,6 +13,7 @@ const CSS = `
 .whm3d{position:relative;overflow:hidden;background:#f6f5f2;font-family:Pretendard,'Instrument Sans',system-ui,sans-serif;color:#111}
 .whm3d canvas{display:block;width:100%;height:100%;touch-action:none}
 .whm3d .v-title{position:absolute;left:16px;top:12px;font-size:15px;font-weight:600;letter-spacing:-.01em;pointer-events:none;max-width:70%}
+.whm3d .v-ctl[hidden]{display:none}
 .whm3d .v-ctl{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.92);border:1px solid #e6e6e6;padding:10px 12px;font-size:12px;line-height:1.6;max-width:min(300px,calc(100% - 24px))}
 .whm3d .v-ctl label{display:flex;align-items:center;gap:6px;cursor:pointer}
 .whm3d .v-ctl input[type=range]{width:120px}
@@ -61,7 +63,10 @@ function label(text) {
   return sp;
 }
 
-export function createViewer(el, payload) {
+export const MAX_EXAG = 10;
+export const clampExag = (v) => Math.min(MAX_EXAG, Math.max(1, Math.round(v * 2) / 2));
+
+export function createViewer(el, payload, { exagUI = true } = {}) {
   injectCSS(el.ownerDocument);
   el.classList.add('whm3d');
   el.innerHTML = '';
@@ -76,9 +81,7 @@ export function createViewer(el, payload) {
   const { w: kw, h: kh } = sizeKm(grid.bbox);
   const S = Math.max(kw, kh);
   const relief = Math.max(0.2, (A.maxIn - A.minIn) / 1000);
-  // 높이 과장은 실제 높이(1배)~5배. 처음 값은 구역 크기로 정하되 5배를 넘지 않는다
-  const MAX_EXAG = 5;
-  const clampExag = (v) => Math.min(MAX_EXAG, Math.max(1, Math.round(v * 2) / 2));
+  // 높이 과장은 실제 높이(1배)~10배. 처음 값은 구역 크기로 정하되 10배를 넘지 않는다
   let exag = clampExag(payload.exag || (0.03 * Math.hypot(kw, kh)) / relief);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -189,8 +192,8 @@ export function createViewer(el, payload) {
   el.insertAdjacentHTML('beforeend', `
     <div class="v-title">${esc(payload.title || '')}</div>
     <div class="v-n">N ↑</div>
-    <div class="v-ctl">
-      <label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <b data-k="exagv">${exag}×</b></label>
+    <div class="v-ctl"${exagUI || sea || hasAreas || hasLines || hasPts ? '' : ' hidden'}>
+      ${exagUI ? `<label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <b data-k="exagv">${exag}×</b></label>` : ''}
       <div class="v-row">
         ${sea ? '<label><input type="checkbox" checked data-k="sea">해수면</label>' : ''}
         ${hasAreas ? '<label><input type="checkbox" checked data-k="areas">영역</label>' : ''}
@@ -201,9 +204,11 @@ export function createViewer(el, payload) {
     </div>
     <div class="v-cred">${(payload.credits || []).map(esc).join('<br>')}</div>`);
   const q = (k) => el.querySelector(`[data-k="${k}"]`);
-  q('exag').addEventListener('input', (e) => {
-    exag = +e.target.value; model.scale.y = exag; q('exagv').textContent = exag + '×'; placeOverlay();
-  });
+  const setExag = (v) => {
+    exag = clampExag(v); model.scale.y = exag; placeOverlay();
+    if (exagUI) { q('exag').value = exag; q('exagv').textContent = exag + '×'; }
+  };
+  if (exagUI) q('exag').addEventListener('input', (e) => setExag(+e.target.value));
   if (sea) q('sea').addEventListener('change', (e) => { sea.visible = e.target.checked; });
   if (hasAreas) q('areas').addEventListener('change', (e) => {
     outlines.visible = e.target.checked;
@@ -242,6 +247,7 @@ export function createViewer(el, payload) {
   return {
     scene, camera, model,
     get exag() { return exag; },
+    setExag,
     dispose() {
       alive = false; ro.disconnect(); controls.dispose(); renderer.dispose();
       scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); });

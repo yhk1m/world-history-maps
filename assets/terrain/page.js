@@ -5,7 +5,7 @@ import { createSelector } from 'whm/select';
 import { unwrapGeom, bboxOf, sizeKm, lonExtent } from 'whm/clip';
 import { loadGrid } from 'whm/dem';
 import { prepareOverlay } from 'whm/overlay';
-import { createViewer } from 'whm/viewer';
+import { createViewer, MAX_EXAG } from 'whm/viewer';
 import { buildHTML, download } from 'whm/export';
 
 const DATA = 'data/';
@@ -142,7 +142,8 @@ $('build').addEventListener('click', async () => {
     const mapTitle = id ? index.maps.find((m) => m.id === id).title : '';
     const payload = { title: region.name + (mapTitle && mapTitle !== region.name ? ` · ${mapTitle}` : ''), grid, region: geom, overlay, credits: CREDITS };
     if (viewer) viewer.dispose();
-    viewer = createViewer($('view'), payload);
+    viewer = createViewer($('view'), payload, { exagUI: false });
+    $('exag').disabled = false; $('exag').max = MAX_EXAG; $('exag').value = viewer.exag; $('exagv').textContent = viewer.exag + '×';
     last = payload;
     $('export').disabled = false;
     $('status').textContent = (grid.failed ? `타일 ${grid.failed}장을 받지 못해 0 m 로 채웠습니다. ` : '')
@@ -154,6 +155,13 @@ $('build').addEventListener('click', async () => {
   } finally {
     $('build').disabled = false;
   }
+});
+
+// 높이 과장(사이드바)
+$('exag').addEventListener('input', (e) => {
+  if (!viewer) return;
+  viewer.setExag(+e.target.value);
+  $('exagv').textContent = viewer.exag + '×';
 });
 
 // HTML 내보내기
