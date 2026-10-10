@@ -139,9 +139,50 @@ frames.forEach((f, i) =&gt; {
       <figcaption><span class="sc-step" id="scStep"></span><span id="scCap"></span></figcaption></figure>
   </article>
 
+  <article class="recipe scen sketch">
+    <div class="r-text">
+      <h3><span>B</span>크로키 — 지도 위에 그리며 생각하기</h3>
+      <p>역사 지도를 깔고 펜·형광펜·화살표·글자로 그려 봅니다. 그린 선은 경위도로 저장되어 확대해도 땅에 붙어 있고, 그림은 PNG 로, 선과 글자는 GeoJSON 으로 내보낼 수 있습니다.</p>
+      <select id="skMap" class="sk-map" aria-label="바탕 지도"></select>
+      <div class="chips" id="skTools" aria-label="도구">
+        <button class="on" data-tool="pen">펜</button>
+        <button data-tool="hi">형광펜</button>
+        <button data-tool="arrow">화살표</button>
+        <button data-tool="text">글자</button>
+        <button data-tool="erase">지우개</button>
+      </div>
+      <div class="sk-row">
+        <div class="chips" id="skWidths" aria-label="굵기">
+          <button data-w="thin">가늘게</button>
+          <button class="on" data-w="mid">보통</button>
+          <button data-w="thick">굵게</button>
+        </div>
+        <div class="sk-colors" id="skColors" aria-label="색">
+          <button class="on" data-c="#b3261e" style="--c:#b3261e" aria-label="빨강"></button>
+          <button data-c="#1f4e79" style="--c:#1f4e79" aria-label="파랑"></button>
+          <button data-c="#111111" style="--c:#111111" aria-label="검정"></button>
+          <button data-c="#2e7d4f" style="--c:#2e7d4f" aria-label="초록"></button>
+          <button data-c="#e07b00" style="--c:#e07b00" aria-label="주황"></button>
+          <button data-c="#6a3d9a" style="--c:#6a3d9a" aria-label="보라"></button>
+        </div>
+      </div>
+      <div class="ctrl">
+        <button class="btn ghost" id="skUndo" disabled>되돌리기</button>
+        <button class="btn ghost" id="skRedo" disabled>다시하기</button>
+        <button class="btn ghost" id="skClear">모두 지우기</button>
+      </div>
+      <div class="ctrl">
+        <button class="btn" id="skPng">PNG 저장</button>
+        <button class="btn ghost" id="skGeo">GeoJSON 저장</button>
+      </div>
+    </div>
+    <figure class="r-demo sk-fig"><svg id="skSvg" data-tool="pen" aria-label="크로키 지도"></svg>
+      <figcaption>휠 = 확대 · Space 를 누른 채 끌기 = 이동 · Ctrl+Z 되돌리기 <button class="sk-fit" id="skFit">화면 맞춤</button></figcaption></figure>
+  </article>
+
   <article class="recipe">
     <div class="r-text">
-      <h3><span>B</span>모핑 — 같은 나라의 여러 판</h3>
+      <h3><span>C</span>모핑 — 같은 나라의 여러 판</h3>
       <p>같은 나라의 여러 판(시기별 영역)을 이어 붙이면 제국의 팽창과 축소를 애니메이션으로 보여 줄 수 있습니다. 나라별 모음에서 판이 둘 이상인 나라를 고르세요.</p>
       <div class="ctrl">
         <select id="mSel" aria-label="나라"></select>
@@ -160,7 +201,7 @@ d3.select('path').transition().duration(1600)
 
   <article class="recipe">
     <div class="r-text">
-      <h3><span>C</span>웹지도에 올리기 — Leaflet</h3>
+      <h3><span>D</span>웹지도에 올리기 — Leaflet</h3>
       <p>주소 하나로 GeoJSON 을 불러와 지도 위에 올립니다. <code>kind</code>·<code>category</code> 로 색을 나누면 범례가 됩니다.</p>
       <pre class="code"><code>const url = 'https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/'
   + 'data/maps/' + encodeURIComponent('1권_p050_로마 제국의 영역')
@@ -180,7 +221,7 @@ fetch(url).then(r =&gt; r.json()).then(fc =&gt; {
 
   <article class="recipe">
     <div class="r-text">
-      <h3><span>D</span>면적 재기 — 제국은 얼마나 넓었을까</h3>
+      <h3><span>E</span>면적 재기 — 제국은 얼마나 넓었을까</h3>
       <p>구면 면적을 계산해 판끼리 비교합니다. 아래 표는 고른 나라의 판별 면적을 이 페이지에서 바로 계산한 값입니다.</p>
       <pre class="code"><code># Python · geopandas
 import geopandas as gpd
@@ -193,7 +234,7 @@ print(g[['name', 'period', 'km2']].sort_values('km2'))</code></pre>
 
   <article class="recipe">
     <div class="r-text">
-      <h3><span>E</span>3D 지형 — 땅의 높낮이 위에서 보는 역사 지도</h3>
+      <h3><span>F</span>3D 지형 — 땅의 높낮이 위에서 보는 역사 지도</h3>
       <p>구역을 직접 그리거나 네모·세모·원 틀, 현대 국가·대륙, 과거 영토(세계사 교과서 지도 + 한국사 시기별 영토)로 고르면, 해저까지 담은 3D 지형 위에 역사 지도의 영역·경로·지점을 덮어 보여 줍니다. 만든 모형은 인터넷 없이도 열리는 HTML 파일 하나로 내보낼 수 있습니다.</p>
       <pre class="code"><code>// 고도: AWS Terrain Tiles(Terrarium) — 높이 = R·256 + G + B/256 − 32768 m
 const grid = await loadGrid(bbox);                 // 구역 범위의 고도 격자
@@ -204,7 +245,7 @@ const viewer = createViewer(el, { grid, region, overlay });</code></pre>
 
   <article class="recipe ideas">
     <div class="r-text">
-      <h3><span>F</span>수업에서</h3>
+      <h3><span>G</span>수업에서</h3>
       <ul class="idea-list">
         <li><b>겹쳐 보기</b> 로마·한·당의 최대 영역을 한 지도에 — 같은 시기, 다른 세계.</li>
         <li><b>길 따라가기</b> 알렉산드로스 원정로의 총 길이를 재고 하루 행군 거리를 추정.</li>
@@ -259,5 +300,6 @@ const viewer = createViewer(el, { grid, region, overlay });</code></pre>
 <script src="https://unpkg.com/flubber@0.4.2/build/flubber.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="assets/app.js"></script>
+<script type="module" src="assets/sketch/sketch.js"></script>
 </body>
 </html>

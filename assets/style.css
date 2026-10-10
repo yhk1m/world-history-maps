@@ -183,3 +183,20 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
 @media (max-width: 900px) { .recipe.scen { grid-template-columns: 1fr; } }
 
 .r-demo.r-link { display: grid; place-items: center; min-height: 220px; background: var(--soft); }
+
+/* 크로키 */
+.sk-map { width: 100%; font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); background: #fff; margin-bottom: 12px; }
+.sk-row { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin-bottom: 4px; }
+.sk-colors { display: flex; gap: 6px; margin-bottom: 16px; }
+.sk-colors button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: var(--c); box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+.sk-colors button.on { box-shadow: 0 0 0 2px var(--ink); }
+.sketch .ctrl { margin-bottom: 10px; }
+.sketch .btn:disabled { opacity: .35; cursor: default; }
+.sk-fig { position: relative; padding: 0; }
+#skSvg { display: block; cursor: crosshair; user-select: none; }
+#skSvg[data-tool="erase"] { cursor: not-allowed; }
+#skSvg[data-tool="text"] { cursor: text; }
+#skSvg.panning { cursor: grab; }
+.sk-fig figcaption { padding: 8px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.sk-fit { margin-left: auto; font: inherit; font-size: 12px; background: #fff; border: 1px solid var(--line); padding: 3px 9px; cursor: pointer; }
+.sk-input { position: absolute; font: 700 15px var(--ko); border: 1px solid var(--ink); background: rgba(255,255,255,.95); padding: 2px 6px; min-width: 140px; outline: none; }
