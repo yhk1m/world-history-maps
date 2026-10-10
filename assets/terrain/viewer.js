@@ -301,7 +301,7 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     markTimer = setTimeout(() => { mark.visible = markAlways || markDrag; }, ms);
   };
   controls.addEventListener('start', () => { markDrag = true; clearTimeout(markTimer); mark.visible = true; });
-  controls.addEventListener('end', () => { markDrag = false; flashMark(700); });
+  controls.addEventListener('end', () => { markDrag = false; flashMark(350); });
   let centerM = 0;
   const keepCenter = () => {
     const dy = (centerM / 1000) * exag - controls.target.y;
@@ -334,7 +334,7 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     const hit = ray.intersectObject(top, false)[0];
     if (!hit) return;
     centerM = (hit.point.y / exag) * 1000;
-    flashMark(1400);
+    flashMark(700);
     const from = controls.target.clone(), to = hit.point.clone(), cam0 = camera.position.clone(), t0 = performance.now();
     anim = (now) => {
       const t = Math.min(1, (now - t0) / 450), e = 1 - (1 - t) ** 3;
