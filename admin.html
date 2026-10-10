@@ -1,0 +1,121 @@
+<!-- © 2026 김용현 -->
+<!doctype html>
+<html lang="ko" data-seed-color-mode="light-only">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>행정구역 탐색 — SpaceArchive</title>
+<meta name="description" content="2013년부터 2026년까지 해마다 남북한 시·도, 시·군·구, 국토 7대 권역, 전통 지역 구분의 경계를 지도에서 보고, 바뀐 곳을 비교하고, GeoJSON 으로 내려받습니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/admin/admin.css">
+<!-- SEED Design(당근 디자인 시스템, Apache-2.0): 토큰 + 쓰는 레시피만 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@seed-design/css@3.0.2/base.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@seed-design/css@3.0.2/recipes/action-button.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@seed-design/css@3.0.2/recipes/chip.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@seed-design/css@3.0.2/recipes/checkmark.css">
+<link rel="stylesheet" href="assets/seed.css">
+<script src="assets/seed.js" defer></script>
+</head>
+<body class="admin">
+
+<header class="top">
+  <a class="brand" href="index.html">SpaceArchive</a>
+  <nav>
+    <a href="index.html#recipes">활용</a>
+    <a href="terrain.html">3D 지형</a>
+    <a href="admin.html" aria-current="page">행정구역</a>
+  </nav>
+</header>
+
+<div class="a-wrap">
+  <aside class="t-panel a-panel">
+    <h1>행정구역 탐색</h1>
+    <p class="a-lede">2013년부터 해마다 남북한의 시·도와 시·군·구, 그리고 이를 묶은 권역의 경계를 봅니다. 해가 바뀌며 새로 생기거나 이름이 바뀐 곳을 비교하고 GeoJSON 으로 내려받을 수 있습니다.</p>
+
+    <section class="a-sec">
+      <h2><span>1</span>연도</h2>
+      <div class="a-year">
+        <b id="yearLabel" class="a-yearnum">2025</b>
+        <span id="yearVer" class="a-yearver"></span>
+      </div>
+      <input id="yearRange" class="a-range" type="range" min="0" max="13" step="1" value="12" aria-label="연도">
+      <div class="a-yearticks" aria-hidden="true"><span id="yearMin"></span><span id="yearMax"></span></div>
+      <div class="a-actions">
+        <button id="yearPrev" class="btn ghost a-small" aria-label="이전 해"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>이전 해</button>
+        <button id="yearNext" class="btn ghost a-small" aria-label="다음 해">다음 해<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
+        <button id="yearPlay" class="btn ghost a-small" aria-pressed="false">재생</button>
+      </div>
+    </section>
+
+    <section class="a-sec">
+      <h2><span>2</span>단위</h2>
+      <div class="chips" id="levels">
+        <button data-level="region7">국토 7대 권역</button>
+        <button data-level="regiontrad">전통 지역 구분</button>
+        <button data-level="sido">시·도</button>
+        <button data-level="sigungu" class="on">시·군·구</button>
+      </div>
+      <p id="levelNote" class="a-help"></p>
+    </section>
+
+    <section class="a-sec">
+      <h2><span>3</span>범위</h2>
+      <div class="a-checks">
+        <label class="a-check"><input id="scopeKr" type="checkbox" checked> 대한민국</label>
+        <label class="a-check"><input id="scopeKp" type="checkbox" checked> 북한</label>
+        <label class="a-check"><input id="baseOn" type="checkbox" checked> 배경 지도</label>
+      </div>
+      <p id="scopeNote" class="a-help"></p>
+    </section>
+
+    <section class="a-sec">
+      <h2><span>4</span>바뀐 곳 보기</h2>
+      <label class="a-check"><input id="diffOn" type="checkbox"> 바로 앞 해와 비교해 칠하기</label>
+      <div id="diffBox" class="a-diff" hidden></div>
+      <details class="a-hist"><summary>모든 해의 변경 목록</summary><div id="histList"></div></details>
+    </section>
+
+    <section class="a-sec">
+      <h2><span>5</span>검색</h2>
+      <input id="q" class="t-q a-q" type="search" placeholder="이름 (예: 군위군, 청주, 관서, Anak)" autocomplete="off">
+      <ul id="qList" class="a-list"></ul>
+    </section>
+
+    <section class="a-sec">
+      <h2><span>6</span>고른 곳</h2>
+      <div id="info" class="a-info"><p class="a-help">지도에서 한 곳을 누르거나 검색해 고르세요.</p></div>
+    </section>
+
+    <section class="a-sec">
+      <h2><span>7</span>내려받기</h2>
+      <button id="dl" class="btn a-small">지금 보는 경계 GeoJSON</button>
+      <p id="dlName" class="a-help a-mono"></p>
+      <p class="a-help">원본 파일</p>
+      <ul id="rawLinks" class="a-raw"></ul>
+    </section>
+
+    <section class="a-sec a-src">
+      <h2><span>8</span>출처</h2>
+      <p id="srcKr"></p>
+      <p id="srcKp"></p>
+      <p id="srcRegion"></p>
+      <p id="srcProc" class="a-mono"></p>
+    </section>
+  </aside>
+
+  <section class="a-stage">
+    <div id="map" class="a-map" aria-label="행정구역 지도"></div>
+    <div id="mapStatus" class="a-mapstatus" role="status"></div>
+    <div id="legend" class="a-legend" hidden></div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module" src="assets/admin/admin.js"></script>
+</body>
+</html>
