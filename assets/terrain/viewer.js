@@ -11,22 +11,32 @@ import { buildArrays, hypso, flatArrow } from 'whm/mesh';
 import { tintGrid, sampler, drape } from 'whm/overlay';
 import { contains, sizeKm } from 'whm/clip';
 
+// 화면 위 조절판은 SEED Design(당근, 중립색) 토큰 값을 그대로 담는다 — 내보낸 HTML 에는 SEED CSS 가 없으므로
+// 페이지(SEED 변수 있음)와 파일(없음)이 똑같이 보이도록 값으로 적는다: 회색 900 #2a3038, 1000 #1a1c20, 400 #dcdee3
 const CSS = `
-.whm3d{position:relative;overflow:hidden;background:#f6f5f2;font-family:Pretendard,'Instrument Sans',system-ui,sans-serif;color:#111}
+.whm3d{position:relative;overflow:hidden;background:#f6f5f2;font-family:Pretendard,'Instrument Sans',system-ui,sans-serif;color:#1a1c20}
 .whm3d canvas{display:block;width:100%;height:100%;touch-action:none}
-.whm3d .v-title{position:absolute;left:16px;top:12px;font-size:15px;font-weight:600;letter-spacing:-.01em;pointer-events:none;max-width:70%}
+.whm3d .v-title{position:absolute;left:16px;top:12px;font-size:15px;font-weight:700;letter-spacing:-.01em;pointer-events:none;max-width:70%}
 .whm3d .v-ctl[hidden]{display:none}
-.whm3d .v-ctl{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.92);border:1px solid #e6e6e6;padding:10px 12px;font-size:12px;line-height:1.6;max-width:min(300px,calc(100% - 24px))}
-.whm3d .v-ctl label{display:flex;align-items:center;gap:6px;cursor:pointer}
-.whm3d .v-ctl input[type=range]{width:110px}
-.whm3d .v-ctl input[type=number]{width:52px;font:inherit;padding:1px 4px;border:1px solid #ccc}
-.whm3d .v-row{display:flex;flex-wrap:wrap;gap:4px 12px}
-.whm3d .v-leg{margin:6px 0 0;padding:0;list-style:none;max-height:110px;overflow:auto}
-.whm3d .v-leg li{display:flex;align-items:center;gap:6px}
-.whm3d .v-leg i{width:12px;height:9px;border:1px solid;flex:none}
-.whm3d .v-cred{position:absolute;right:10px;bottom:6px;font-size:10px;color:#777;text-align:right;max-width:55%;pointer-events:none}
-.whm3d .v-n{position:absolute;right:12px;top:10px;width:44px;height:44px;padding:0;border-radius:50%;border:1px solid #d6d4cf;background:rgba(255,255,255,.92);cursor:pointer}
-.whm3d .v-n:hover{border-color:#111}
+.whm3d .v-ctl{position:absolute;left:12px;bottom:12px;background:#fff;border-radius:12px;box-shadow:0 2px 10px #0000001a;padding:12px 14px;font-size:13px;line-height:1.5;max-width:min(320px,calc(100% - 24px))}
+.whm3d .v-ctl label{display:flex;align-items:center;gap:8px;cursor:pointer;min-height:28px}
+.whm3d .v-ctl input[type=range]{width:110px;accent-color:#2a3038}
+.whm3d .v-ctl input[type=number]{width:58px;height:28px;box-sizing:border-box;font:inherit;padding:0 8px;border:1px solid #dcdee3;border-radius:8px;background:#fff;color:#1a1c20}
+.whm3d .v-ctl input[type=number]:focus-visible{outline:2px solid #5e98fe;outline-offset:1px}
+.whm3d .v-ctl input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:none;width:20px;height:20px;margin:0;border:1px solid #dcdee3;border-radius:4px;background:#fff;cursor:pointer;transition:background-color .15s}
+.whm3d .v-ctl input[type=checkbox]:hover{background:#f3f4f5}
+.whm3d .v-ctl input[type=checkbox]:checked{border-width:0;background:#2a3038 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.2 3.2L15 7'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+.whm3d .v-ctl input[type=checkbox]:focus-visible{outline:2px solid #5e98fe;outline-offset:2px}
+.whm3d .v-ctl input[type=checkbox]:active{scale:.95}
+.whm3d .v-row{display:flex;flex-wrap:wrap;gap:2px 14px}
+.whm3d .v-leg{margin:8px 0 0;padding:8px 0 0;border-top:1px solid #f3f4f5;list-style:none;max-height:110px;overflow:auto;color:#555d6d}
+.whm3d .v-leg li{display:flex;align-items:center;gap:8px;min-height:22px}
+.whm3d .v-leg i{width:14px;height:10px;border:1px solid;border-radius:2px;flex:none}
+.whm3d .v-cred{position:absolute;right:10px;bottom:6px;font-size:10px;color:#555d6d;text-align:right;max-width:55%;pointer-events:none}
+.whm3d .v-n{position:absolute;right:12px;top:10px;width:44px;height:44px;padding:0;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px #00000014,0 0 0 1px #00000010;cursor:pointer;transition:scale .1s}
+.whm3d .v-n:hover{box-shadow:0 2px 10px #0000001a,0 0 0 1px #dcdee3}
+.whm3d .v-n:active{scale:.95}
+.whm3d .v-n:focus-visible{outline:2px solid #5e98fe;outline-offset:2px}
 .whm3d .v-n svg{display:block;width:100%;height:100%}
 `;
 function injectCSS(doc) {
