@@ -333,7 +333,8 @@ async function drawProfile(line) {
     const t = seg[i - 1] ? (d - cum[i - 1]) / seg[i - 1] : 0;
     const lon = L[i - 1][0] + (L[i][0] - L[i - 1][0]) * t, lat = L[i - 1][1] + (L[i][1] - L[i - 1][1]) * t;
     vals.push(Math.round(sample(lon, lat)));
-    if (d + 1e-9 >= nextTick) { labels.push(String(Math.round(nextTick * 10) / 10)); nextTick += tick; } else labels.push('');
+    // 가로축 끝 12% 안의 눈금 숫자는 빼서 오른쪽 끝 단위 「(km)」와 겹치지 않게(1만 km 넘는 긴 숫자일 때 겹쳤다)
+    if (d + 1e-9 >= nextTick) { labels.push(k < (N - 1) * 0.88 ? String(Math.round(nextTick * 10) / 10) : ''); nextTick += tick; } else labels.push('');
   }
   if (viewer) viewer.setProfile(onModel ? L : null);
   $('profileBox').hidden = false;
