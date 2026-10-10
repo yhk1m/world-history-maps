@@ -91,8 +91,8 @@ code { font-family: var(--mono); font-size: .86em; background: var(--soft); padd
 .urlbox { margin-top: 48px; display: grid; gap: 10px; justify-items: start; }
 .urlbox p { margin: 0; font-size: 13px; color: var(--ink-2); }
 .urlbox code { display: block; max-width: 100%; overflow-x: auto; white-space: nowrap; padding: 10px 14px; }
-.btn { font: inherit; font-size: 14px; background: var(--ink); color: #fff; border: 0; padding: 11px 20px; text-decoration: none; cursor: pointer; transition: background .2s; }
-.btn:hover { background: var(--accent); }
+.btn:not([data-seed-cls]) { font: inherit; font-size: 14px; background: var(--ink); color: #fff; border: 0; padding: 11px 20px; text-decoration: none; cursor: pointer; transition: background .2s; }
+.btn:not([data-seed-cls]):hover { background: var(--accent); }
 
 /* recipes */
 .recipe { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; padding: 44px 0; border-bottom: 1px solid var(--line); }
@@ -166,11 +166,11 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
 /* scenario */
 .recipe.scen { grid-template-columns: minmax(300px, 1fr) 1.5fr; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-.chips button { font: inherit; font-size: 13px; background: #fff; border: 1px solid var(--line); padding: 6px 11px; cursor: pointer; color: var(--ink-2); transition: all .15s; }
-.chips button:hover { border-color: var(--ink); color: var(--ink); }
-.chips button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
-.btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--ink); }
-.btn.ghost:hover { background: var(--soft); }
+.chips button:not([data-seed-cls]) { font: inherit; font-size: 13px; background: #fff; border: 1px solid var(--line); padding: 6px 11px; cursor: pointer; color: var(--ink-2); transition: all .15s; }
+.chips button:not([data-seed-cls]):hover { border-color: var(--ink); color: var(--ink); }
+.chips button.on:not([data-seed-cls]) { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.ghost:not([data-seed-cls]) { background: #fff; color: var(--ink); border: 1px solid var(--ink); }
+.btn.ghost:not([data-seed-cls]):hover { background: var(--soft); }
 .sc-legend { list-style: none; padding: 0; margin: 0 0 18px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
 .sc-legend i { display: inline-block; width: 12px; height: 12px; border: 1.5px solid; margin-right: 6px; vertical-align: -1px; }
 .sc-legend i.rt { height: 0; width: 18px; border-width: 2px 0 0; }
@@ -200,7 +200,7 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
 .sk-fit { margin-left: auto; font: inherit; font-size: 12px; background: #fff; border: 1px solid var(--line); padding: 3px 9px; cursor: pointer; }
 .sk-input { position: absolute; font: 700 15px var(--ko); border: 1px solid var(--ink); background: rgba(255,255,255,.95); padding: 2px 6px; min-width: 140px; outline: none; }
 .sk-check { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; line-height: 1.35; }
-.sk-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--ink); cursor: pointer; flex: none; }
+.sk-check input:not([data-seed-cls]) { width: 15px; height: 15px; margin: 0; accent-color: var(--ink); cursor: pointer; flex: none; }
 .sk-layers { border: 1px solid var(--line); background: #fff; margin-bottom: 14px; font-size: 13px; }
 .sk-layers summary { padding: 7px 10px; cursor: pointer; user-select: none; }
 .sk-layers[open] summary { border-bottom: 1px solid var(--line); }
