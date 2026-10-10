@@ -11,7 +11,7 @@ import { buildHTML, download } from 'whm/export';
 const DATA = 'data/';
 // 지형 고도색(초록·황갈)과 섞여도 구분되도록 초록 계열은 뺀 영역 색
 const PALETTE = ['#b3261e', '#1f4e79', '#6a3d9a', '#b8860b', '#c2185b', '#00838f', '#5d4037', '#455a64'];
-const CREDITS = ['고도·수심: AWS Terrain Tiles (SRTM, GEBCO, ETOPO1 등)', '경계: Natural Earth', '역사 지도: World History Maps (yhk1m.github.io/world-history-maps)'];
+const CREDITS = ['고도·수심: AWS Terrain Tiles (SRTM, GEBCO, ETOPO1 등)', '경계: Natural Earth', '역사 지도: SpaceArchive (yhk1m.github.io/space-archive)'];
 const $ = (id) => document.getElementById(id);
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
 const enc = (s) => s.split('/').map(encodeURIComponent).join('/');

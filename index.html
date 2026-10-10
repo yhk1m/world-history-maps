@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>World History Maps</title>
-<meta name="description" content="고등학교 세계사 교과서 지도 76개를 GeoJSON 공간 데이터로 — 영역·경로·지점, 나라별 모음, 활용 방법.">
+<title>SpaceArchive</title>
+<meta name="description" content="교과서 지도를 공간 데이터로 — 세계사 교과서 지도 76개 GeoJSON, 한국사 시기별 영토, 3D 지형.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,14 +16,14 @@
 <body>
 
 <header class="top">
-  <a class="brand" href="#">World History Maps</a>
+  <a class="brand" href="#">SpaceArchive</a>
   <nav>
     <a href="#dataset">데이터</a>
     <a href="#download">받기</a>
     <a href="#recipes">활용</a>
     <a href="#method">만든 방법</a>
     <a href="terrain.html">3D 지형</a>
-    <a class="gh" href="https://github.com/yhk1m/world-history-maps" aria-label="GitHub 저장소">
+    <a class="gh" href="https://github.com/yhk1m/space-archive" aria-label="GitHub 저장소">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
     </a>
   </nav>
@@ -108,9 +108,9 @@
   </div>
   <div class="urlbox">
     <p>주소 규칙 — 파일을 바로 불러올 때</p>
-    <code id="urlCdn">https://cdn.jsdelivr.net/gh/yhk1m/world-history-maps@main/data/maps/{지도}/{파일}</code>
-    <code>https://raw.githubusercontent.com/yhk1m/world-history-maps/main/data/maps/{지도}/{파일}</code>
-    <a class="btn" href="https://github.com/yhk1m/world-history-maps/archive/refs/heads/main.zip">전체 ZIP 내려받기</a>
+    <code id="urlCdn">https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/maps/{지도}/{파일}</code>
+    <code>https://raw.githubusercontent.com/yhk1m/space-archive/main/data/maps/{지도}/{파일}</code>
+    <a class="btn" href="https://github.com/yhk1m/space-archive/archive/refs/heads/main.zip">전체 ZIP 내려받기</a>
   </div>
 </section>
 
@@ -162,7 +162,7 @@ d3.select('path').transition().duration(1600)
     <div class="r-text">
       <h3><span>C</span>웹지도에 올리기 — Leaflet</h3>
       <p>주소 하나로 GeoJSON 을 불러와 지도 위에 올립니다. <code>kind</code>·<code>category</code> 로 색을 나누면 범례가 됩니다.</p>
-      <pre class="code"><code>const url = 'https://cdn.jsdelivr.net/gh/yhk1m/world-history-maps@main/'
+      <pre class="code"><code>const url = 'https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/'
   + 'data/maps/' + encodeURIComponent('1권_p050_로마 제국의 영역')
   + '/' + encodeURIComponent('영역_전체.geojson');
 fetch(url).then(r =&gt; r.json()).then(fc =&gt; {
@@ -234,14 +234,14 @@ const viewer = createViewer(el, { grid, region, overlay });</code></pre>
   <div class="sec-head"><span class="num">05</span><h2>Source &amp; Terms</h2><p>출처와 이용 조건</p></div>
   <div class="two">
     <p>원본: 미래엔 고등학교 「세계사」 교과서 지도. 이 데이터는 교과서 지도를 바탕으로 다시 그린 2차 자료이며, 교과서 그림 자체는 포함하지 않습니다. 교육·비영리 목적으로 출처를 밝혀 자유롭게 쓸 수 있습니다.</p>
-    <p class="cite">인용 예 — 김용현(2026). World History Maps: 세계사 교과서 지도 GeoJSON. https://github.com/yhk1m/world-history-maps<br><br>해안선·국경: Natural Earth(퍼블릭 도메인). 배경 지도: © OpenStreetMap contributors.</p>
+    <p class="cite">인용 예 — 김용현(2026). SpaceArchive: 세계사·한국사 지도 GeoJSON과 3D 지형. https://github.com/yhk1m/space-archive<br><br>해안선·국경: Natural Earth(퍼블릭 도메인). 배경 지도: © OpenStreetMap contributors.</p>
   </div>
 </section>
 </main>
 
 <footer class="foot">
   <div class="f-left">
-    <div class="f-brand">World History Maps</div>
+    <div class="f-brand">SpaceArchive</div>
     <a href="https://bgnl.kr" target="_blank" rel="noopener">bgnl.kr</a>
   </div>
   <div class="f-right">

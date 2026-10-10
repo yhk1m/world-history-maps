@@ -1,8 +1,8 @@
 // © 2026 김용현
-// World History Maps — 히어로 모핑, 지도 탐색기(Leaflet), 모핑 레시피, 면적 표.
+// SpaceArchive — 히어로 모핑, 지도 탐색기(Leaflet), 모핑 레시피, 면적 표.
 (() => {
   const DATA = 'data/';
-  const CDN = 'https://cdn.jsdelivr.net/gh/yhk1m/world-history-maps@main/data/';
+  const CDN = 'https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/';
   const R = 6371;
   const PALETTE = ['#b3261e', '#1f4e79', '#2e7d4f', '#b8860b', '#6a3d9a', '#00838f', '#c2185b', '#5d4037', '#455a64', '#7cb342'];
   const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
@@ -294,7 +294,7 @@
       hero(heroList);
       explorer(index);
       recipes(groups);
-      getJSON(DATA + 'lite/scenarios.json').then(scenarios).catch((e) => console.error('[WHM] scenarios', e));
+      getJSON(DATA + 'lite/scenarios.json').then(scenarios).catch((e) => console.error('[GSA] scenarios', e));
     })
-    .catch((e) => console.error('[WHM]', e));
+    .catch((e) => console.error('[GSA]', e));
 })();
