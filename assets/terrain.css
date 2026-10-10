@@ -48,3 +48,4 @@
   .t-panel { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); padding: 18px 16px 24px; }
   .t-stage { grid-template-rows: 300px 480px; }
 }
+.t-check { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 12px 0 2px; cursor: pointer; }

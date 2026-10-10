@@ -1,7 +1,8 @@
 // © 2026 김용현
 // 3D 지형 뷰어 — 페이지(terrain.html)와 내보낸 HTML 이 같이 쓴다.
 // payload = { title, grid:{w,h,bbox,data}, region(geom), overlay(prepareOverlay 결과|null), credits:[문자열], exag? }
-// opts.exagUI = false 면 화면 위 높이 과장 슬라이더를 숨긴다(페이지가 사이드바에서 setExag 로 조절).
+// opts.inlineUI = false 면 화면 위 높이 과장·중심점 조절을 숨긴다(페이지가 사이드바에서 setExag·setCenterVisible 로 조절).
+// 화면을 더블클릭하면 그 땅 위 지점이 회전 중심이 된다(e-GIS 와 같은 방식).
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -44,6 +45,22 @@ function geometry({ positions, colors, index }) {
   return g;
 }
 
+function centerSprite() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  x.lineWidth = 6; x.strokeStyle = 'rgba(255,255,255,.95)';
+  x.beginPath(); x.arc(32, 32, 14, 0, Math.PI * 2); x.moveTo(32, 4); x.lineTo(32, 60); x.moveTo(4, 32); x.lineTo(60, 32); x.stroke();
+  x.lineWidth = 2.5; x.strokeStyle = '#b3261e';
+  x.beginPath(); x.arc(32, 32, 14, 0, Math.PI * 2); x.moveTo(32, 6); x.lineTo(32, 58); x.moveTo(6, 32); x.lineTo(58, 32); x.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, sizeAttenuation: false }));
+  sp.scale.set(0.045, 0.045, 1);
+  sp.renderOrder = 20;
+  return sp;
+}
+
 function label(text) {
   const c = document.createElement('canvas');
   const ctx = c.getContext('2d');
@@ -66,7 +83,7 @@ function label(text) {
 export const MAX_EXAG = 10;
 export const clampExag = (v) => Math.min(MAX_EXAG, Math.max(1, Math.round(v * 2) / 2));
 
-export function createViewer(el, payload, { exagUI = true } = {}) {
+export function createViewer(el, payload, { inlineUI = true } = {}) {
   injectCSS(el.ownerDocument);
   el.classList.add('whm3d');
   el.innerHTML = '';
@@ -192,9 +209,10 @@ export function createViewer(el, payload, { exagUI = true } = {}) {
   el.insertAdjacentHTML('beforeend', `
     <div class="v-title">${esc(payload.title || '')}</div>
     <div class="v-n">N ↑</div>
-    <div class="v-ctl"${exagUI || sea || hasAreas || hasLines || hasPts ? '' : ' hidden'}>
-      ${exagUI ? `<label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <b data-k="exagv">${exag}×</b></label>` : ''}
+    <div class="v-ctl"${inlineUI || sea || hasAreas || hasLines || hasPts ? '' : ' hidden'}>
+      ${inlineUI ? `<label>높이 과장 <input type="range" min="1" max="${MAX_EXAG}" step="0.5" value="${exag}" data-k="exag"> <b data-k="exagv">${exag}×</b></label>` : ''}
       <div class="v-row">
+        ${inlineUI ? '<label title="화면을 더블클릭하면 그 자리가 회전 중심이 됩니다"><input type="checkbox" checked data-k="center">중심점</label>' : ''}
         ${sea ? '<label><input type="checkbox" checked data-k="sea">해수면</label>' : ''}
         ${hasAreas ? '<label><input type="checkbox" checked data-k="areas">영역</label>' : ''}
         ${hasLines ? '<label><input type="checkbox" checked data-k="routes">경로</label>' : ''}
@@ -204,11 +222,39 @@ export function createViewer(el, payload, { exagUI = true } = {}) {
     </div>
     <div class="v-cred">${(payload.credits || []).map(esc).join('<br>')}</div>`);
   const q = (k) => el.querySelector(`[data-k="${k}"]`);
+  // 회전 중심점: 땅 위 고도(m)를 기억해 두었다가 높이 과장이 바뀌어도 땅에 붙어 있게
+  const mark = centerSprite();
+  scene.add(mark);
+  let centerM = 0;
   const setExag = (v) => {
     exag = clampExag(v); model.scale.y = exag; placeOverlay();
-    if (exagUI) { q('exag').value = exag; q('exagv').textContent = exag + '×'; }
+    const dy = (centerM / 1000) * exag - controls.target.y;
+    controls.target.y += dy; camera.position.y += dy;
+    if (inlineUI) { q('exag').value = exag; q('exagv').textContent = exag + '×'; }
   };
-  if (exagUI) q('exag').addEventListener('input', (e) => setExag(+e.target.value));
+  if (inlineUI) q('exag').addEventListener('input', (e) => setExag(+e.target.value));
+  const setCenterVisible = (on) => { mark.visible = on; if (inlineUI) q('center').checked = on; };
+  if (inlineUI) q('center').addEventListener('change', (e) => setCenterVisible(e.target.checked));
+
+  // 더블클릭 = 그 땅 위 지점으로 회전 중심 옮기기(카메라는 같은 각도·거리로 따라감)
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let anim = null;
+  renderer.domElement.addEventListener('dblclick', (ev) => {
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObject(top, false)[0];
+    if (!hit) return;
+    centerM = (hit.point.y / exag) * 1000;
+    const from = controls.target.clone(), to = hit.point.clone(), cam0 = camera.position.clone(), t0 = performance.now();
+    anim = (now) => {
+      const t = Math.min(1, (now - t0) / 450), e = 1 - (1 - t) ** 3;
+      const tgt = from.clone().lerp(to, e);
+      camera.position.copy(cam0).add(tgt.clone().sub(from));
+      controls.target.copy(tgt);
+      if (t >= 1) anim = null;
+    };
+  });
   if (sea) q('sea').addEventListener('change', (e) => { sea.visible = e.target.checked; });
   if (hasAreas) q('areas').addEventListener('change', (e) => {
     outlines.visible = e.target.checked;
@@ -239,7 +285,9 @@ export function createViewer(el, payload, { exagUI = true } = {}) {
   let alive = true;
   (function loop() {
     if (!alive) return;
+    if (anim) anim(performance.now());
     controls.update();
+    mark.position.copy(controls.target);
     renderer.render(scene, camera);
     requestAnimationFrame(loop);
   })();
@@ -248,6 +296,8 @@ export function createViewer(el, payload, { exagUI = true } = {}) {
     scene, camera, model,
     get exag() { return exag; },
     setExag,
+    setCenterVisible,
+    get target() { return controls.target.clone(); },
     dispose() {
       alive = false; ro.disconnect(); controls.dispose(); renderer.dispose();
       scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); });

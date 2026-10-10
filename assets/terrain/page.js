@@ -142,7 +142,8 @@ $('build').addEventListener('click', async () => {
     const mapTitle = id ? index.maps.find((m) => m.id === id).title : '';
     const payload = { title: region.name + (mapTitle && mapTitle !== region.name ? ` · ${mapTitle}` : ''), grid, region: geom, overlay, credits: CREDITS };
     if (viewer) viewer.dispose();
-    viewer = createViewer($('view'), payload, { exagUI: false });
+    viewer = createViewer($('view'), payload, { inlineUI: false });
+    viewer.setCenterVisible($('centerOn').checked);
     $('exag').disabled = false; $('exag').max = MAX_EXAG; $('exag').value = viewer.exag; $('exagv').textContent = viewer.exag + '×';
     last = payload;
     $('export').disabled = false;
@@ -163,6 +164,8 @@ $('exag').addEventListener('input', (e) => {
   viewer.setExag(+e.target.value);
   $('exagv').textContent = viewer.exag + '×';
 });
+
+$('centerOn').addEventListener('change', (e) => { if (viewer) viewer.setCenterVisible(e.target.checked); });
 
 // HTML 내보내기
 $('export').addEventListener('click', async () => {
