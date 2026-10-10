@@ -168,6 +168,18 @@ test('소속 시·도 바뀜: 군위군(경북 → 대구)은 칠하고 강원 �
   assert.ok(movedUnits(changePairFor(idx.changes, 1985)).has('대구직할시 중구'));
 });
 
+test('전통 지역 구분: 관동 대신 영동·영서(1975·2026 모두), 구성 시·도는 강원', () => {
+  for (const y of [1975, 2026]) {
+    const names = fc(`kr/${y}_regiontrad.json`).map((f) => f.properties.name);
+    assert.ok(names.includes('영동') && names.includes('영서') && !names.includes('관동'), String(names));
+    const yd = fc(`kr/${y}_regiontrad.json`).find((f) => f.properties.name === '영동');
+    assert.ok(yd.properties.members.every((m) => m.startsWith('강원')));
+    // 강릉(동경 128.9°, 북위 37.75°)은 영동, 춘천(127.73°, 37.88°)은 영서
+    assert.ok(pointInGeom(yd.geometry, 128.9, 37.75));
+    assert.ok(!pointInGeom(yd.geometry, 127.73, 37.88));
+  }
+});
+
 test('연도 한 칸 옮기기', () => {
   const ys = [2013, 2014, 2015];
   assert.equal(stepYear(ys, 2014, 1), 2015);

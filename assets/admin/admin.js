@@ -533,7 +533,7 @@ function syncControls() {
   $('scopeNote').textContent = region7
     ? '국토 7대 권역은 대한민국만 나눕니다.'
     : trad
-      ? `전통 지역 구분 파일은 남북을 함께 담습니다(해서·관서·관북은 북한, 관동은 남북 강원). 북한 부분의 시점: ${idx.kp.asOf}.`
+      ? `전통 지역 구분 파일은 남북을 함께 담습니다(해서·관서·관북은 북한, 영동·영서는 남북 강원). 북한 부분의 시점: ${idx.kp.asOf}.`
       : (state.kp ? `북한 경계는 한 시점뿐이라 연도를 바꿔도 같습니다(${idx.kp.asOf}).` : '');
   const reg = idx.regions[state.level];
   $('levelNote').textContent = reg
