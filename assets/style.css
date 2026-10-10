@@ -200,3 +200,14 @@ table.area .bar { height: 6px; background: var(--accent); display: block; }
 .sk-fig figcaption { padding: 8px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .sk-fit { margin-left: auto; font: inherit; font-size: 12px; background: #fff; border: 1px solid var(--line); padding: 3px 9px; cursor: pointer; }
 .sk-input { position: absolute; font: 700 15px var(--ko); border: 1px solid var(--ink); background: rgba(255,255,255,.95); padding: 2px 6px; min-width: 140px; outline: none; }
+.sk-check { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; line-height: 1.35; }
+.sk-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--ink); cursor: pointer; flex: none; }
+.sk-ws { margin-bottom: 10px; }
+.sk-layers { border: 1px solid var(--line); background: #fff; margin-bottom: 14px; font-size: 13px; }
+.sk-layers summary { padding: 7px 10px; cursor: pointer; user-select: none; }
+.sk-layers[open] summary { border-bottom: 1px solid var(--line); }
+#skLayers { display: grid; gap: 5px; padding: 8px 10px; max-height: 190px; overflow-y: auto; }
+#skLayers .grp { margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--line); }
+#skLayers .grp + .grp { border-top: 0; padding-top: 0; margin-top: 0; }
+.sk-sw { width: 12px; height: 12px; flex: none; background: color-mix(in srgb, var(--c) 22%, #fff); border: 1.5px solid var(--c); }
+.sk-none { margin: 0; color: #777; font-size: 12px; }

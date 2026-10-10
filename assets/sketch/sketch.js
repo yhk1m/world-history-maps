@@ -38,8 +38,11 @@ function init() {
   const gMap = root.append('g');
   const gInk = root.append('g');
   const gDraft = root.append('g');
-  let proj = d3.geoNaturalEarth1(), path = d3.geoPath(proj), k = 1, land = null, fc = null, mapId = '';
+  let proj = d3.geoEqualEarth(), path = d3.geoPath(proj), k = 1, land = null, fc = null, mapId = '';
   let tool = 'pen', color = '#b3261e', width = 'mid', space = false, hover = false;
+  // 학습지 모드(지명 숨김)와 바탕 레이어 고르기: 숨긴 것은 아예 그리지 않아 PNG 에도 빠진다
+  let worksheet = ls.get('sa-sketch-worksheet') === '1';
+  let hiddenAreas = new Set(), showLines = true, showPoints = true;
 
   d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-50m.json')
     .then((t) => { land = topojson.feature(t, t.objects.land); drawBase(); }).catch(() => {});
@@ -69,7 +72,8 @@ function init() {
       const p = f.properties || {}, g = f.geometry;
       if (!g) continue;
       if (p._t === 'area') {
-        const c = AREA_COLORS[ci++ % AREA_COLORS.length];
+        const ai = ci++, c = AREA_COLORS[ai % AREA_COLORS.length];   // 숨겨도 색 순서는 그대로
+        if (hiddenAreas.has(ai)) continue;
         gMap.append('path').attr('d', path(rewind(g))).attr('fill', c).attr('fill-opacity', 0.16)
           .attr('stroke', c).attr('stroke-opacity', 0.7).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
       }
@@ -77,12 +81,15 @@ function init() {
     for (const f of fc.features) {
       const p = f.properties || {}, g = f.geometry;
       if (p._t === 'line' && g) {
+        if (!showLines) continue;
         gMap.append('path').attr('d', path(g)).attr('fill', 'none').attr('stroke', '#555').attr('stroke-width', 1)
           .attr('stroke-dasharray', '4 3').attr('vector-effect', 'non-scaling-stroke');
       } else if (p._t === 'point' && g) {
+        if (!showPoints) continue;
         const xy = proj(g.coordinates);
         if (!xy) continue;
         gMap.append('circle').attr('class', 'sk-pt').attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 2.4 / k).attr('fill', '#111');
+        if (worksheet) continue;
         gMap.append('text').attr('class', 'sk-scale').attr('data-size', 10).attr('x', xy[0] + 4 / k).attr('y', xy[1] - 3 / k)
           .attr('font-family', FONT).attr('font-size', 10 / k).attr('fill', '#333').attr('paint-order', 'stroke')
           .attr('stroke', '#fff').attr('stroke-width', 2.5 / k).text(p.name || '');
@@ -133,14 +140,43 @@ function init() {
       const walk = (c) => { if (typeof c[0] === 'number') { lons.push(c[0]); pts.push(c); } else c.forEach(walk); };
       fc.features.forEach((f) => f.geometry && walk(f.geometry.coordinates));
       const [w, e] = lonExtent(lons);
-      proj = d3.geoNaturalEarth1().rotate([-(w + e) / 2, 0]).fitExtent([[20, 20], [W - 20, H - 20]], { type: 'MultiPoint', coordinates: pts });
+      proj = d3.geoEqualEarth().rotate([-(w + e) / 2, 0]).fitExtent([[20, 20], [W - 20, H - 20]], { type: 'MultiPoint', coordinates: pts });
     } else {
-      proj = d3.geoNaturalEarth1().fitExtent([[10, 10], [W - 10, H - 10]], { type: 'Sphere' });
+      proj = d3.geoEqualEarth().fitExtent([[10, 10], [W - 10, H - 10]], { type: 'Sphere' });
     }
     path = d3.geoPath(proj);
     svg.call(zoom.transform, d3.zoomIdentity);
     store.load(ls.get('sa-sketch:' + id) || '[]');
+    hiddenAreas = new Set(); showLines = true; showPoints = true;
+    buildLayers();
     drawBase();
+  }
+
+  // 바탕 레이어 목록: 영역(이름 + 색) · 경로 · 지점
+  function buildLayers() {
+    const box = $('skLayers');
+    if (!box) return;
+    box.innerHTML = '';
+    const feats = fc ? fc.features.filter((f) => f.geometry) : [];
+    const areas = feats.filter((f) => (f.properties || {})._t === 'area');
+    const nLine = feats.filter((f) => (f.properties || {})._t === 'line').length;
+    const nPt = feats.filter((f) => (f.properties || {})._t === 'point').length;
+    const item = (label, swatch, on, fn, extra) => {
+      const lab = document.createElement('label');
+      lab.className = 'sk-check' + (extra ? ' ' + extra : '');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = on;
+      cb.addEventListener('change', () => { fn(cb.checked); drawBase(); });
+      lab.appendChild(cb);
+      if (swatch) { const sw = document.createElement('i'); sw.className = 'sk-sw'; sw.style.setProperty('--c', swatch); lab.appendChild(sw); }
+      lab.appendChild(document.createTextNode(label));
+      box.appendChild(lab);
+    };
+    areas.forEach((f, i) => item(f.properties.name || `영역 ${i + 1}`, AREA_COLORS[i % AREA_COLORS.length], !hiddenAreas.has(i),
+      (on) => { if (on) hiddenAreas.delete(i); else hiddenAreas.add(i); }));
+    if (nLine) item(`경로 (${nLine})`, null, showLines, (on) => { showLines = on; }, 'grp');
+    if (nPt) item(`지점 (${nPt})`, null, showPoints, (on) => { showPoints = on; }, 'grp');
+    if (!box.childNodes.length) box.innerHTML = '<p class="sk-none">이 바탕에는 고를 레이어가 없습니다.</p>';
   }
 
   // 그리기
@@ -237,6 +273,11 @@ function init() {
   $('skClear').addEventListener('click', () => store.clear());
   $('skFit').addEventListener('click', () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
   $('skMap').addEventListener('change', (e) => setMap(e.target.value));
+  const ws = $('skWorksheet');
+  if (ws) {
+    ws.checked = worksheet;
+    ws.addEventListener('change', () => { worksheet = ws.checked; ls.set('sa-sketch-worksheet', worksheet ? '1' : '0'); drawBase(); });
+  }
 
   const save = (name, blob) => {
     const a = document.createElement('a');
@@ -277,5 +318,5 @@ function init() {
     setMap(first.id);
   }).catch((e) => console.error('[SA] sketch', e));
 
-  window.__sketch = { store, setMap, get proj() { return proj; }, zoom: (t) => svg.call(zoom.transform, t) };
+  window.__sketch = { store, setMap, get proj() { return proj; }, setWorksheet: (v) => { if (ws) ws.checked = v; worksheet = v; drawBase(); }, zoom: (t) => svg.call(zoom.transform, t) };
 }
