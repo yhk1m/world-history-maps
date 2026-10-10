@@ -304,16 +304,15 @@ async function drawProfile(line) {
   data.labelPlacement = 'lineEnd';
   data.xGrid = true; data.gridColor = '#555'; data.gridWidth = 1;
   const hi = Math.max(...vals), lo = Math.min(...vals);
-  const cv = Object.assign(document.createElement('canvas'), { width: PROFILE_W, height: PROFILE_H });
   if (profile && profile.chart) profile.chart.destroy();
-  const chart = new CsatChart(cv, { type: 'line', data, options: { title: '지형 단면도 (A–B)' } });
   profile = {
-    chart, cv, axis, seaKm: crossesSea ? seaLv / 1000 : null, geo: plotBox(cv),
+    data, chart: null, titleOn: null, axis, seaKm: crossesSea ? seaLv / 1000 : null, geo: null,
     notes: [
       `가로축은 A 로부터의 거리, A–B 는 약 ${Math.round(total).toLocaleString()} km 임.`,
       `가장 높은 곳은 ${hi.toLocaleString()} m, 가장 낮은 곳은 ${lo.toLocaleString()} m 임${crossesSea ? `(해수면 ${seaLv} m 기준)` : ''}.`,
     ],
   };
+  $('pfSea').disabled = !crossesSea;
   await composeProfile($('profileChart'), 1);
   $('profileBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -322,10 +321,9 @@ async function drawProfile(line) {
 // 아래·오른쪽 끝은 그 선을 따라가며 어두운 픽셀이 끊기는 곳으로 잰다
 const PROFILE_W = 900, PROFILE_H = 520;
 const SANS = "'HY중고딕', 'HYGothic-Medium', '돋움', 'Dotum', 'Noto Sans KR', sans-serif";
-function plotBox(cv) {
+function plotBox(cv, top) {
   const { width: W, height: H } = cv, px = cv.getContext('2d').getImageData(0, 0, W, H).data;
   const dark = (x, y) => { const i = (y * W + x) * 4; return px[i] + px[i + 1] + px[i + 2] < 330; };
-  const top = 100;
   let bestX = 130, bestLen = 0;
   for (let x = 124; x <= 136; x++) { let y = top + 2; while (y < H && dark(x, y)) y++; if (y - top > bestLen) { bestLen = y - top; bestX = x; } }
   let bestY = top, right = 0;
@@ -335,8 +333,17 @@ function plotBox(cv) {
 // 보이는 캔버스(또는 PNG 용 큰 캔버스)에 그래프 + 해수면 점선·세로 이름 + 각주(같은 크기, 켜고 끄기) + 출처
 async function composeProfile(out, scale) {
   const P = profile;
+  const on = (id) => $(id).checked;
+  // 제목을 켜고 끄면 그래프 틀 위치가 바뀌므로(위 여백 100 ↔ 50) 그래프를 다시 그린다
+  if (P.titleOn !== on('pfTitle')) {
+    if (P.chart) P.chart.destroy();
+    P.titleOn = on('pfTitle');
+    const cv = Object.assign(document.createElement('canvas'), { width: PROFILE_W, height: PROFILE_H });
+    P.chart = new CsatChart(cv, { type: 'line', data: P.data, options: { title: P.titleOn ? '지형 단면도 (A–B)' : '' } });
+    P.geo = plotBox(cv, P.titleOn ? 100 : 50);
+  }
   const img = await new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.src = P.chart.toDataURL({ scale }); });
-  const W = PROFILE_W, notesOn = $('profileNotes').checked;
+  const W = PROFILE_W, notesOn = on('profileNotes');
   const m = document.createElement('canvas').getContext('2d');
   // 각주는 줄마다 폭에 맞춘 크기 중 가장 작은 것 하나로 통일
   const room = W - 60;
@@ -356,7 +363,7 @@ async function composeProfile(out, scale) {
   ctx.drawImage(img, 0, 0);
   ctx.save(); ctx.scale(scale, scale);
   const g = P.geo;
-  if (P.seaKm !== null) {
+  if (P.seaKm !== null && on('pfSea')) {
     const y = g.bottom - ((P.seaKm - P.axis.min) / (P.axis.max - P.axis.min)) * (g.bottom - g.top);
     ctx.strokeStyle = '#444'; ctx.lineWidth = 1.6; ctx.setLineDash([9, 6]);
     ctx.beginPath(); ctx.moveTo(g.left, y); ctx.lineTo(g.right, y); ctx.stroke(); ctx.setLineDash([]);
@@ -364,12 +371,16 @@ async function composeProfile(out, scale) {
     ctx.fillStyle = '#000'; ctx.font = `20px ${SANS}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('해수면', g.right + 8, y);
   }
-  {
-    // 세로축 이름 「해발고도」 — 눈금 숫자보다 바깥, 왼쪽에 세로쓰기(그래프 높이 가운데)
-    const f = 24, chars = [...'해발고도'], step = f * 1.12, mid = (g.top + g.bottom) / 2;
+  if (on('pfAxis')) {
+    // 세로축 이름 「해발고도」 — 제목(csat-chart exam: 고딕 40px)과 같은 크기로, 눈금 숫자 바깥 왼쪽에 세로쓰기
+    const f = 40, chars = [...'해발고도'], step = f * 1.08, mid = (g.top + g.bottom) / 2;
     ctx.fillStyle = '#000'; ctx.font = `${f}px ${SANS}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    chars.forEach((c, i) => ctx.fillText(c, 26, mid - (step * chars.length) / 2 + step * (i + 0.5)));
+    chars.forEach((c, i) => ctx.fillText(c, 28, mid - (step * chars.length) / 2 + step * (i + 0.5)));
   }
+  // 단면선 양 끝 A·B — 지도·3D 의 A·B 와 같은 끝을 그래프 틀 안쪽 위 모서리에(왼쪽 위 단위와 겹치지 않게)
+  ctx.fillStyle = '#000'; ctx.font = `30px ${SANS}`; ctx.textBaseline = 'top';
+  ctx.textAlign = 'left'; ctx.fillText('A', g.left + 8, g.top + 6);
+  ctx.textAlign = 'right'; ctx.fillText('B', g.right - 8, g.top + 6);
   ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic';
   let y = PROFILE_H + 4;
   if (notesOn) {
@@ -381,7 +392,7 @@ async function composeProfile(out, scale) {
   ctx.restore();
   return out;
 }
-$('profileNotes').addEventListener('change', () => { if (profile) composeProfile($('profileChart'), 1); });
+['pfTitle', 'pfAxis', 'pfSea', 'profileNotes'].forEach((id) => $(id).addEventListener('change', () => { if (profile) composeProfile($('profileChart'), 1); }));
 $('profilePng').addEventListener('click', async () => {
   if (!profile) return;
   const big = await composeProfile(document.createElement('canvas'), 2);
