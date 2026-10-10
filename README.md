@@ -46,7 +46,7 @@ https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/maps/{지도}/{파일}
 지도 위에 펜·형광펜·화살표·글자로 그리고 PNG·GeoJSON 으로 저장하는 도구를 **파일 하나**로 담았다. 받아서 그대로 열어도 동작하고(바탕 지도 자료는 공개 CDN 에서 받음), 코드를 고쳐 다른 도구로 바꿔 쓰기 좋다. 사이트의 크로키 코드(`assets/sketch/*.js`)로 `npm run build:croquis` 하면 다시 만든다.
 
 ## 행정구역 (`data/admin/`)
-남북한 행정구역 경계를 연도별·단위별로: 남한 2013~2026 해마다(국토 7대 권역·전통 지역 구분·시도·시군구), 북한 현재 판(시도·시군). 권역은 e-GIS 의 병합(디졸브) 방식(turf union)으로 시도를 합쳐 만들었다.
+남북한 행정구역 경계를 연도별·단위별로: 남한 1975~2026(1995년까지 5년마다, 2000년부터 해마다 — 1975~2012년은 연말, 2013년부터는 7월 1일 무렵 시점. 단위: 국토 7대 권역·전통 지역 구분·시도·시군구), 북한 현재 판(시도·시군). 권역은 e-GIS 의 병합(디졸브) 방식(turf union)으로 시도를 합쳐 만들었다.
 - 남한: 본 데이터는 통계청 통계지리정보서비스(SGIS, https://sgis.kostat.go.kr)에서 공공누리 제1유형으로 개방한 행정동 경계를 가공한 것이며(가공: vuski/admdongkor, https://github.com/vuski/admdongkor), CC BY 4.0으로 배포됩니다.
 - 북한: geoBoundaries (Runfola et al. 2020, https://www.geoboundaries.org), 원자료 World Food Programme, OCHA ROAP, CC BY 3.0 IGO.
 

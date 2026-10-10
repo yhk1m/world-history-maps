@@ -2,7 +2,7 @@
 // 행정구역 탐색 — 연도·단위·범위를 골라 남북한 경계를 그리고, 앞 해와 바뀐 곳을 칠한다
 import {
   LEVEL_LABEL, isRegionLevel, changePairFor, changedSets, unitChange, pairHasChanges, splitRename,
-  downloadName, displayName, sphericalAreaKm2, formatKm2, searchUnits, stepYear,
+  downloadName, displayName, sphericalAreaKm2, formatKm2, searchUnits, stepYear, morphGroups, largestRing,
 } from './logic.js';
 
 const L = window.L;
@@ -15,11 +15,12 @@ const PLAY_MS = 1600;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 let idx = null;
-const state = { year: 2025, level: 'sigungu', kr: true, kp: true, base: true, diff: false };
+const state = { year: 2025, level: 'sigungu', kr: true, kp: true, base: true, diff: false, morph: true };
 const cache = new Map();
 let map, baseLayer, layers = [], renderSeq = 0, playTimer = null;
 let selKey = null, hoverLayer = null;
 let shown = { kr: null, kp: null }; // 지금 그려진 FeatureCollection
+let lastDrawn = null; // { year, level, kr } 바로 전에 그린 것(모핑의 출발점)
 
 // ── 저장(없어도 동작) ──
 function loadState() {
@@ -28,7 +29,7 @@ function loadState() {
     if (s && typeof s === 'object') {
       if (idx.years.includes(Number(s.year))) state.year = Number(s.year);
       if (idx.levels.includes(s.level)) state.level = s.level;
-      for (const k of ['kr', 'kp', 'base', 'diff']) if (typeof s[k] === 'boolean') state[k] = s[k];
+      for (const k of ['kr', 'kp', 'base', 'diff', 'morph']) if (typeof s[k] === 'boolean') state[k] = s[k];
     }
   } catch { /* 저장소를 못 씀 */ }
 }
@@ -73,10 +74,30 @@ const labelOf = (p) => (isRegionLevel(p.level) ? p.name : displayName(p));
 const keyOf = (p) => `${p.level}|${labelOf(p)}`;
 
 // ── 바뀐 곳 묶음 ──
-function diffSets() {
+async function diffSets() {
   if (!state.diff) return null;
   const pair = changePairFor(idx.changes, state.year);
-  return pair ? { pair, sets: changedSets(pair, state.level) } : null;
+  if (!pair) return null;
+  const sets = changedSets(pair, state.level);
+  // 경계가 바뀐(합쳐지거나 나뉜) 단위: 앞 해 같은 단위와 모양을 견준다
+  const ck = `${state.level}|${state.year}`;
+  if (!reshapeCache.has(ck)) {
+    const f0 = idx.files[pair.from]?.['kr_' + state.level], f1 = idx.files[pair.to]?.['kr_' + state.level];
+    reshapeCache.set(ck, Promise.all([fetchJSON(f0), fetchJSON(f1)]).then(([a, b]) => {
+      const m = morphGroups(a.features, b.features, sets.renamedFrom);
+      return new Set([...m.changedNew].map((i) => featKey(b.features[i])));
+    }).catch(() => new Set()));
+  }
+  const reshaped = await reshapeCache.get(ck);
+  return { pair, sets, reshaped };
+}
+const reshapeCache = new Map();
+const featKey = (f) => f.properties.full || f.properties.name;
+/** 바뀐 곳 보기에서 한 단위의 상태: 'reshaped'(합쳐지거나 나뉨·경계 바뀜 → 채움) | 'renamed'(이름·소속만 → 점선) | null */
+function diffKind(f) {
+  if (!curDiff || f.__who === 'kp') return null;
+  if (curDiff.reshaped.has(featKey(f))) return 'reshaped';
+  return unitChange(f.properties, f.properties.level, curDiff.sets) ? 'renamed' : null;
 }
 let curDiff = null;
 
@@ -88,15 +109,15 @@ function baseStyle(feature) {
   else if (p.level === 'sido') st = { color: north ? '#555' : '#2a2a2a', weight: 1.1, fillColor: '#fff', fillOpacity: 0.5 };
   else st = { color: north ? '#666' : '#3a3a3a', weight: 0.6, fillColor: '#fff', fillOpacity: 0.5 };
   st.dashArray = null; st.opacity = 1;
-  if (curDiff && !north) {
-    const kind = unitChange(p, p.level, curDiff.sets);
-    if (kind === 'added') Object.assign(st, { fillColor: ACCENT, fillOpacity: 0.35, color: '#7a1a14', weight: 1.8 });
-    else if (kind === 'renamed') Object.assign(st, { color: ACCENT, weight: 1.8, dashArray: '5 4' });
-  }
+  const kind = diffKind(feature);
+  if (kind === 'reshaped') Object.assign(st, { fillColor: ACCENT, fillOpacity: 0.45, color: '#7a1a14', weight: 1.4 });
+  else if (kind === 'renamed') Object.assign(st, { color: ACCENT, weight: 1.8, dashArray: '5 4' });
   if (keyOf(p) === selKey) Object.assign(st, { color: '#111', weight: 3, dashArray: null });
   return st;
 }
 function restyle(layer) {
+  if (morphHidden.has(layer)) { layer.setStyle({ opacity: 0, fillOpacity: 0 }); return; }
+  if (flashing.has(layer)) { layer.setStyle(flashStyle(layer, flashing.get(layer))); return; }
   layer.setStyle(baseStyle(layer.feature));
   if (layer === hoverLayer) layer.setStyle({ color: '#111', weight: Math.max(2.2, baseStyle(layer.feature).weight + 1.4) });
 }
@@ -111,13 +132,11 @@ function tipHTML(layer) {
   else if (layer.feature.__who === 'kp') sub = `북한 ${LEVEL_LABEL[p.level]}${p.en && p.en !== p.name ? ' · ' + p.en : ''}`;
   else sub = LEVEL_LABEL[p.level];
   let ch = '';
-  if (curDiff && layer.feature.__who !== 'kp') {
-    const kind = unitChange(p, p.level, curDiff.sets);
-    if (kind === 'added') ch = `<small>${curDiff.pair.to}년에 새로 생김</small>`;
-    else if (kind === 'renamed') {
-      const from = curDiff.sets.renamedFrom.get(p.full);
-      ch = `<small>${from ? `이름·소속 바뀜: ${esc(from)} →` : '구성 시·도의 이름·경계가 바뀜'}</small>`;
-    }
+  const kind = diffKind(layer.feature);
+  if (kind === 'reshaped') ch = `<small>${curDiff.pair.to}년에 ${curDiff.sets.added.has(p.full) ? '새로 생김(합쳐지거나 나뉨)' : '경계가 바뀜'}</small>`;
+  else if (kind === 'renamed') {
+    const from = curDiff.sets.renamedFrom.get(p.full);
+    ch = `<small>${from ? `이름·소속만 바뀜: ${esc(from)} →` : '구성 시·도의 이름이 바뀜'}</small>`;
   }
   return `<b>${esc(labelOf(p))}</b><small>${esc(sub)}</small>${ch}`;
 }
@@ -135,11 +154,16 @@ async function render({ fit = false } = {}) {
     return;
   }
   if (seq !== renderSeq) return;
+  const nextDiff = await diffSets();
+  if (seq !== renderSeq) return;
   $('mapStatus').textContent = '';
+  finishMorph();
+  const prev = lastDrawn;
   for (const g of layers) g.remove();
   layers = []; hoverLayer = null;
   shown = { kr: null, kp: null };
-  curDiff = diffSets();
+  curDiff = nextDiff;
+  const krLayerOf = new Map();
   // 북한을 먼저(아래 칸), 남한을 위 칸에 — 비무장지대에서 겹치는 부분은 남한 경계가 위로
   for (const d of data) {
     shown[d.who] = d.g;
@@ -152,9 +176,15 @@ async function render({ fit = false } = {}) {
         layer.on('mouseover', () => { const prev = hoverLayer; hoverLayer = layer; if (prev) restyle(prev); restyle(layer); if (keyOf(f.properties) !== selKey) layer.bringToFront(); bringSelectedFront(); });
         layer.on('mouseout', () => { if (hoverLayer === layer) hoverLayer = null; restyle(layer); });
         layer.on('click', () => select(layer, false));
+        if (d.who === 'kr') krLayerOf.set(f, layer);
       },
     }).addTo(map);
     layers.push(g);
+  }
+  lastDrawn = { year: state.year, level: state.level, kr: shown.kr };
+  if (prev && prev.kr && shown.kr && prev.level === state.level && prev.year !== state.year
+      && (Math.abs(idx.years.indexOf(prev.year) - idx.years.indexOf(state.year)) === 1)) {
+    maybeMorph(prev, shown.kr, krLayerOf);
   }
   // 고른 곳 이어 보기
   let selLayer = null;
@@ -166,6 +196,153 @@ async function render({ fit = false } = {}) {
   updateLegend();
   updateDownloads();
   runSearch();
+}
+
+// ── 모핑: 앞 해의 바뀐 단위 모양을 이번 해 모양으로 1.2초 동안 바꾼다(flubber) ──
+const MORPH_MS = 1200, FLASH_MS = 1500, MORPH_MAX = 40;
+const morphHidden = new Set();
+const flashing = new Map(); // layer → 0~1(1 = 빨강)
+let morph = null, flashRaf = 0;
+const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mixHex(a, b, t) {
+  const A = hexRgb(a), B = hexRgb(b);
+  return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+const hex6 = (c, d) => (/^#[0-9a-f]{6}$/i.test(c) ? c : /^#[0-9a-f]{3}$/i.test(c) ? '#' + [...c.slice(1)].map((x) => x + x).join('') : d);
+// 모핑이 끝난 단위를 잠깐 빨갛게 칠했다가 원래 색으로(k: 1 → 0)
+function flashStyle(layer, k) {
+  const st = baseStyle(layer.feature);
+  return { ...st, fillColor: mixHex(hex6(st.fillColor, '#ffffff'), ACCENT, k), fillOpacity: st.fillOpacity + (0.45 - st.fillOpacity) * k,
+    color: mixHex(hex6(st.color, '#333333'), '#7a1a14', k) };
+}
+function startFlash(ls) {
+  if (!ls.length) return;
+  const t0 = performance.now();
+  for (const l of ls) flashing.set(l, 1);
+  cancelAnimationFrame(flashRaf);
+  const step = (now) => {
+    const k = Math.max(0, 1 - (now - t0) / FLASH_MS);
+    for (const l of ls) if (flashing.has(l)) { flashing.set(l, ease(k)); restyle(l); }
+    if (k > 0) flashRaf = requestAnimationFrame(step);
+    else for (const l of ls) { flashing.delete(l); restyle(l); }
+  };
+  flashRaf = requestAnimationFrame(step);
+}
+
+function projRing(ring) {
+  const out = [];
+  let px = null;
+  for (const [lng, lat] of ring) {
+    const p = map.latLngToLayerPoint([lat, lng]);
+    if (px && Math.abs(p.x - px.x) + Math.abs(p.y - px.y) < 1.5) continue;
+    out.push([p.x, p.y]); px = p;
+  }
+  if (out.length > 3) { const a = out[0], b = out[out.length - 1]; if (a[0] === b[0] && a[1] === b[1]) out.pop(); }
+  return out.length >= 3 ? out : null;
+}
+const perim = (r) => r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + Math.hypot(q[0] - p[0], q[1] - p[1]); }, 0);
+const segLen = (rs) => Math.max(3, Math.max(...rs.map(perim)) / 260);
+const ringD = (r) => 'M' + r.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('L') + 'Z';
+const centroidPx = (r) => r.reduce((a, p) => [a[0] + p[0] / r.length, a[1] + p[1] / r.length], [0, 0]);
+
+function morphSvg() {
+  const pane = map.getPane('morphPane');
+  let svg = pane.querySelector('svg');
+  if (!svg) {
+    svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'a-morph');
+    pane.appendChild(svg);
+  }
+  return svg;
+}
+
+/** 모핑 조각들: { d(t) → 경로, op(t) → 불투명도, tf(t) → transform } */
+function buildPieces(prevFC, curFC, groups) {
+  const F = window.flubber;
+  const pieces = [];
+  const ringOf = (f) => projRing(largestRing(f.geometry) || []);
+  // 뒤를 잇는 단위가 없으면 사라지고, 앞선 단위가 없으면 가운데서 자란다
+  const fade = (f) => { const r = ringOf(f); if (r) { const d = ringD(r); pieces.push({ d: () => d, op: (t) => 1 - t }); } };
+  const grow = (f) => {
+    const r = ringOf(f); if (!r) return;
+    const d = ringD(r), c = centroidPx(r);
+    pieces.push({ d: () => d, op: () => 1, tf: (t) => `translate(${c[0]} ${c[1]}) scale(${Math.max(0.001, t)}) translate(${-c[0]} ${-c[1]})` });
+  };
+  const interp = (fo, fn) => {
+    const a = ringOf(fo), b = ringOf(fn);
+    if (!a || !b) { fade(fo); grow(fn); return; }
+    pieces.push({ d: F.interpolate(a, b, { maxSegmentLength: segLen([a, b]) }), op: () => 1 });
+  };
+  for (const g of groups) {
+    const O = g.olds.map((i) => prevFC.features[i]), N = g.news.map((i) => curFC.features[i]);
+    try {
+      if (!O.length) N.forEach(grow);
+      else if (!N.length) O.forEach(fade);
+      else if (O.length === 1 && N.length === 1) interp(O[0], N[0]);
+      else if (O.length === 1) { // 하나가 여럿으로 나뉨
+        const a = ringOf(O[0]), bs = N.map(ringOf).filter(Boolean);
+        pieces.push({ d: F.separate(a, bs, { single: true, maxSegmentLength: segLen([a, ...bs]) }), op: () => 1 });
+      } else if (N.length === 1) { // 여럿이 하나로 합쳐짐
+        const as = O.map(ringOf).filter(Boolean), b = ringOf(N[0]);
+        pieces.push({ d: F.combine(as, b, { single: true, maxSegmentLength: segLen([b, ...as]) }), op: () => 1 });
+      } else { // 여럿 ↔ 여럿: 가장 많이 겹치는 것끼리
+        const usedO = new Set(g.pairs.map((q) => q[0])), pairedN = new Set(g.pairs.map((q) => q[1]));
+        for (const [oi, ni] of g.pairs) interp(prevFC.features[oi], curFC.features[ni]);
+        g.olds.filter((i) => !usedO.has(i)).forEach((i) => fade(prevFC.features[i]));
+        g.news.filter((i) => !pairedN.has(i)).forEach((i) => grow(curFC.features[i]));
+      }
+    } catch { O.forEach(fade); N.forEach(grow); }
+  }
+  return pieces;
+}
+
+function maybeMorph(prev, curFC, krLayerOf) {
+  if (!state.morph || reducedMotion() || !window.flubber) return;
+  const pair = changePairFor(idx.changes, Math.max(prev.year, state.year));
+  let renamed = changedSets(pair, state.level).renamedFrom;
+  if (prev.year > state.year) renamed = new Map([...renamed].map(([to, from]) => [from, to])); // 거꾸로 갈 때
+  const m = morphGroups(prev.kr.features, curFC.features, renamed, 0.15, MORPH_MAX);
+  if (m.tooMany || !m.groups.length) return;
+  const newLayers = [...m.changedNew].map((i) => krLayerOf.get(curFC.features[i])).filter(Boolean);
+  const pieces = buildPieces(prev.kr, curFC, m.groups);
+  if (!pieces.length) return;
+  const svg = morphSvg();
+  svg.textContent = '';
+  for (const pc of pieces) {
+    pc.el = document.createElementNS(SVGNS, 'path');
+    pc.el.setAttribute('class', 'a-morph-path');
+    svg.appendChild(pc.el);
+  }
+  for (const l of newLayers) { morphHidden.add(l); restyle(l); }
+  const t0 = performance.now();
+  morph = { pieces, newLayers, raf: 0, svg };
+  const frame = (now) => {
+    if (!morph) return;
+    const forced = window.__adminMorphT; // 확인용: 숫자를 넣으면 그 진행도에 멈춘다
+    const raw = typeof forced === 'number' ? forced : Math.min(1, (now - t0) / MORPH_MS);
+    const t = ease(raw);
+    for (const pc of pieces) {
+      pc.el.setAttribute('d', pc.d(t));
+      pc.el.setAttribute('opacity', String(pc.op(t)));
+      if (pc.tf) pc.el.setAttribute('transform', pc.tf(t));
+    }
+    if (raw < 1 || typeof forced === 'number') morph.raf = requestAnimationFrame(frame);
+    else finishMorph();
+  };
+  morph.raf = requestAnimationFrame(frame);
+}
+function finishMorph() {
+  if (!morph) return;
+  const m = morph;
+  morph = null;
+  cancelAnimationFrame(m.raf);
+  m.svg.textContent = '';
+  for (const l of m.newLayers) { morphHidden.delete(l); restyle(l); }
+  startFlash(m.newLayers.filter((l) => l._map));
 }
 
 function fitPeninsula() {
@@ -198,11 +375,9 @@ function showInfo(layer) {
   else rows.push(['연도', `${p.year ?? state.year} (경계 기준일 ${fmtVer(idx.source.kr.versions[state.year])})`]);
   rows.push(['넓이', `약 ${formatKm2(sphericalAreaKm2(f.geometry))}`]);
   if (isRegionLevel(p.level)) rows.push(['구성', (p.members || []).join(', ')]);
-  if (curDiff && !north) {
-    const kind = unitChange(p, p.level, curDiff.sets);
-    if (kind === 'added') rows.push(['변경', `${curDiff.pair.from} → ${curDiff.pair.to} 새로 생김`]);
-    if (kind === 'renamed') rows.push(['변경', curDiff.sets.renamedFrom.get(p.full) ? `${curDiff.sets.renamedFrom.get(p.full)}에서 바뀜` : '구성 시·도 변경']);
-  }
+  const dk = diffKind(f);
+  if (dk === 'reshaped') rows.push(['변경', `${curDiff.pair.from} → ${curDiff.pair.to} ${curDiff.sets.added.has(p.full) ? '새로 생김(합쳐지거나 나뉨)' : '경계 바뀜'}`]);
+  if (dk === 'renamed') rows.push(['변경', curDiff.sets.renamedFrom.get(p.full) ? `${curDiff.sets.renamedFrom.get(p.full)}에서 이름·소속만 바뀜` : '구성 시·도 이름 바뀜']);
   $('info').innerHTML = `<p class="a-name">${esc(labelOf(p))}</p><dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     <p class="a-help">넓이는 단순화한 경계로 구면에서 잰 값이라 공식 면적과 조금 다릅니다.</p>`;
 }
@@ -264,11 +439,10 @@ function updateLegend() {
   if (!curDiff) { lg.hidden = true; return; }
   let a = 0, r = 0;
   forEachFeatureLayer((l) => {
-    if (l.feature.__who === 'kp') return;
-    const k = unitChange(l.feature.properties, state.level, curDiff.sets);
-    if (k === 'added') a++; else if (k === 'renamed') r++;
+    const k = diffKind(l.feature);
+    if (k === 'reshaped') a++; else if (k === 'renamed') r++;
   });
-  lg.innerHTML = `<b>${curDiff.pair.from} → ${curDiff.pair.to}</b><span><i class="a-sw"></i>새로 생김 ${a}</span><span><i class="a-sw ren"></i>이름·소속 바뀜 ${r}</span>`;
+  lg.innerHTML = `<b>${curDiff.pair.from} → ${curDiff.pair.to}</b><span><i class="a-sw"></i>합쳐지거나 나뉨 · 경계 바뀜 ${a}</span><span><i class="a-sw ren"></i>이름·소속만 바뀜 ${r}</span>`;
   lg.hidden = false;
 }
 
@@ -358,6 +532,7 @@ function syncControls() {
     : `${state.year}년 대한민국 ${LEVEL_LABEL[state.level]} ${idx.counts[state.year]?.[state.level] ?? ''}개 · 북한 ${idx.kp.counts[state.level]}개`;
   $('baseOn').checked = state.base;
   $('diffOn').checked = state.diff;
+  $('morphOn').checked = state.morph;
 }
 function setYear(y) {
   if (!idx.years.includes(y)) return;
@@ -396,6 +571,7 @@ function wire() {
     state.base = e.target.checked; saveState();
     if (state.base) baseLayer.addTo(map); else baseLayer.remove();
   });
+  $('morphOn').addEventListener('change', (e) => { state.morph = e.target.checked; saveState(); if (!state.morph) finishMorph(); });
   $('diffOn').addEventListener('change', (e) => { state.diff = e.target.checked; saveState(); render(); });
   $('diffBox').addEventListener('click', (e) => { const b = e.target.closest('button[data-full]'); if (b) zoomTo(b.dataset.full); });
   $('q').addEventListener('input', runSearch);
@@ -421,6 +597,9 @@ async function main() {
   map = L.map('map', { zoomSnap: 0.25, minZoom: 5, maxZoom: 13, worldCopyJump: false });
   map.createPane('kpPane').style.zIndex = 410;
   map.createPane('krPane').style.zIndex = 420;
+  map.createPane('morphPane').style.zIndex = 430;
+  map.getPane('morphPane').style.pointerEvents = 'none';
+  map.on('zoomstart', () => finishMorph());
   baseLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19, opacity: 0.45, className: 'a-base', attribution: '© OpenStreetMap contributors',
   });

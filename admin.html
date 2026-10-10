@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>행정구역 탐색 — SpaceArchive</title>
-<meta name="description" content="2013년부터 2026년까지 해마다 남북한 시·도, 시·군·구, 국토 7대 권역, 전통 지역 구분의 경계를 지도에서 보고, 바뀐 곳을 비교하고, GeoJSON 으로 내려받습니다.">
+<meta name="description" content="1975년부터 2026년까지(1995년까지는 5년마다, 이후 해마다) 남북한 시·도, 시·군·구, 국토 7대 권역, 전통 지역 구분의 경계를 지도에서 보고, 바뀐 곳을 비교하고, GeoJSON 으로 내려받습니다.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -35,7 +35,7 @@
 <div class="a-wrap">
   <aside class="t-panel a-panel">
     <h1>행정구역 탐색</h1>
-    <p class="a-lede">2013년부터 해마다 남북한의 시·도와 시·군·구, 그리고 이를 묶은 권역의 경계를 봅니다. 해가 바뀌며 새로 생기거나 이름이 바뀐 곳을 비교하고 GeoJSON 으로 내려받을 수 있습니다.</p>
+    <p class="a-lede">1975년부터(1995년까지는 5년마다, 2000년부터는 해마다) 남북한의 시·도와 시·군·구, 그리고 이를 묶은 권역의 경계를 봅니다. 해가 바뀌며 새로 생기거나 이름이 바뀐 곳을 비교하고 GeoJSON 으로 내려받을 수 있습니다.</p>
 
     <section class="a-sec">
       <h2><span>1</span>연도</h2>
@@ -50,6 +50,8 @@
         <button id="yearNext" class="btn ghost a-small" aria-label="다음 해">다음 해<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
         <button id="yearPlay" class="btn ghost a-small" aria-pressed="false">재생</button>
       </div>
+      <label class="a-check a-morphon"><input id="morphOn" type="checkbox" checked> 바뀔 때 모핑</label>
+      <p class="a-help">한 해씩 옮기거나 재생할 때, 합쳐지거나 나뉜 곳의 옛 경계가 새 경계로 바뀌는 모습을 보여 줍니다.</p>
     </section>
 
     <section class="a-sec">
@@ -116,6 +118,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/flubber@0.4.2/build/flubber.min.js"></script>
 <script type="module" src="assets/admin/admin.js"></script>
 </body>
 </html>
