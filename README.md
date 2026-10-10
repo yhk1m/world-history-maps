@@ -35,6 +35,13 @@ https://cdn.jsdelivr.net/gh/yhk1m/world-history-maps@main/data/maps/{지도}/{�
 ```
 (한글 경로는 `encodeURIComponent` 로 인코딩)
 
+## 3D 지형 (`terrain.html`)
+구역(직접 그리기 · 네모·세모·원 틀 · 현대 국가 · 대륙 · 과거 영토)을 고르면 해저까지 담은 3D 지형 위에 역사 지도를 덮어 보여 주고, 인터넷 없이 열리는 HTML 파일 하나로 내보낸다.
+- 고도·수심: [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)(Terrarium, SRTM·GEBCO·ETOPO1 등)
+- 현대 국가·대륙: Natural Earth 10m 간략판(`data/lite/ne_countries.json`)
+- 한국사 시기별 영토: `data/lite/maps/한국사_*.json`, 목록 `data/lite/korea_index.json` (史뿐史뿐 한국사 아틀라스 영토 자료)
+- 코드: `assets/terrain/*.js` — 계산 모듈(clip·dem·mesh·overlay·codec)은 `npm test`(Node 내장 테스트)로 확인
+
 ## 만든 방법
 1. 지도마다 기준점 12~50개로 지리참조
 2. PDF 벡터 도형에서 영역·경로 추출(일부 색 분할)

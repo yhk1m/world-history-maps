@@ -22,6 +22,7 @@
     <a href="#download">받기</a>
     <a href="#recipes">활용</a>
     <a href="#method">만든 방법</a>
+    <a href="terrain.html">3D 지형</a>
     <a class="gh" href="https://github.com/yhk1m/world-history-maps" aria-label="GitHub 저장소">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
     </a>
@@ -190,9 +191,20 @@ print(g[['name', 'period', 'km2']].sort_values('km2'))</code></pre>
     <div class="r-demo"><table class="area" id="areaTbl"></table></div>
   </article>
 
+  <article class="recipe">
+    <div class="r-text">
+      <h3><span>E</span>3D 지형 — 땅의 높낮이 위에서 보는 역사 지도</h3>
+      <p>구역을 직접 그리거나 네모·세모·원 틀, 현대 국가·대륙, 과거 영토(세계사 교과서 지도 + 한국사 시기별 영토)로 고르면, 해저까지 담은 3D 지형 위에 역사 지도의 영역·경로·지점을 덮어 보여 줍니다. 만든 모형은 인터넷 없이도 열리는 HTML 파일 하나로 내보낼 수 있습니다.</p>
+      <pre class="code"><code>// 고도: AWS Terrain Tiles(Terrarium) — 높이 = R·256 + G + B/256 − 32768 m
+const grid = await loadGrid(bbox);                 // 구역 범위의 고도 격자
+const viewer = createViewer(el, { grid, region, overlay });</code></pre>
+    </div>
+    <div class="r-demo r-link"><a class="btn" href="terrain.html">3D 지형 열기</a></div>
+  </article>
+
   <article class="recipe ideas">
     <div class="r-text">
-      <h3><span>E</span>수업에서</h3>
+      <h3><span>F</span>수업에서</h3>
       <ul class="idea-list">
         <li><b>겹쳐 보기</b> 로마·한·당의 최대 영역을 한 지도에 — 같은 시기, 다른 세계.</li>
         <li><b>길 따라가기</b> 알렉산드로스 원정로의 총 길이를 재고 하루 행군 거리를 추정.</li>

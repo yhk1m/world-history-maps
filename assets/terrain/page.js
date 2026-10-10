@@ -9,7 +9,8 @@ import { createViewer } from 'whm/viewer';
 import { buildHTML, download } from 'whm/export';
 
 const DATA = 'data/';
-const PALETTE = ['#b3261e', '#1f4e79', '#2e7d4f', '#b8860b', '#6a3d9a', '#00838f', '#c2185b', '#5d4037', '#455a64', '#7cb342'];
+// 지형 고도색(초록·황갈)과 섞여도 구분되도록 초록 계열은 뺀 영역 색
+const PALETTE = ['#b3261e', '#1f4e79', '#6a3d9a', '#b8860b', '#c2185b', '#00838f', '#5d4037', '#455a64'];
 const CREDITS = ['고도·수심: AWS Terrain Tiles (SRTM, GEBCO, ETOPO1 등)', '경계: Natural Earth', '역사 지도: World History Maps (yhk1m.github.io/world-history-maps)'];
 const $ = (id) => document.getElementById(id);
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
@@ -84,9 +85,14 @@ $('wholeMap').addEventListener('click', async () => {
   sel.setRegion({ type: 'Polygon', coordinates: [[[w - pw, s - ph], [e + pw, s - ph], [e + pw, n + ph], [w - pw, n + ph], [w - pw, s - ph]]] }, m.title);
 });
 
-Promise.all([getJSON(DATA + 'index.json'), getJSON(DATA + 'lite/ne_countries.json')]).then(([idx, ne]) => {
+Promise.all([getJSON(DATA + 'index.json'), getJSON(DATA + 'lite/ne_countries.json'), getJSON(DATA + 'lite/korea_index.json')]).then(([world, ne, korea]) => {
+  // 세계사 교과서 지도 + 한국사 시기별 영토를 한 목록으로(label = 목록·선택 상자에 보일 이름)
+  world.maps.forEach((m) => { m.label = `${m.vol}권 ${m.page}쪽 · ${m.title}`; });
+  korea.maps.forEach((m) => { m.label = `한국사 · ${m.title}`; });
+  const idx = { maps: world.maps.concat(korea.maps) };
   index = idx;
-  $('overMap').insertAdjacentHTML('beforeend', idx.maps.map((m) => `<option value="${esc(m.id)}">${m.vol}권 ${esc(m.page)}쪽 · ${esc(m.title)}</option>`).join(''));
+  const opts = (ms) => ms.map((m) => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join('');
+  $('overMap').insertAdjacentHTML('beforeend', `<optgroup label="한국사">${opts(korea.maps)}</optgroup><optgroup label="세계사 교과서">${opts(world.maps)}</optgroup>`);
   const countries = ne.features.filter((f) => f.properties.kind === 'country');
   list($('countryList'), $('countryQ'), countries.map((f) => ({
     label: f.properties.name, sub: f.properties.continent, en: f.properties.en,
@@ -99,7 +105,7 @@ Promise.all([getJSON(DATA + 'index.json'), getJSON(DATA + 'lite/ne_countries.jso
   for (const m of idx.maps) for (const f of m.files) {
     if (!f.startsWith('영역_') || f === '영역_전체.geojson') continue;
     const name = f.slice(3, -8);
-    hist.push({ label: name, sub: `${m.vol}권 ${m.page}쪽 · ${m.title}`, pick: async () => {
+    hist.push({ label: name, sub: m.label, pick: async () => {
       const fc = await loadMap(m.id);
       const g = fc.features.find((x) => x.properties._t === 'area' && x.properties.name === name);
       if (!g) return;
@@ -159,4 +165,4 @@ $('export').addEventListener('click', async () => {
 });
 
 // 확인용 훅(헤드리스 캡처)
-window.__terrain = { sel, setOverlayMap, build: () => $('build').click(), get last() { return last; }, buildHTML };
+window.__terrain = { sel, setOverlayMap, build: () => $('build').click(), get last() { return last; }, get viewer() { return viewer; }, buildHTML };

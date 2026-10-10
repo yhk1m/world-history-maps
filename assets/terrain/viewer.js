@@ -107,10 +107,16 @@ export function createViewer(el, payload) {
   // 해수면: 구역 모양 그대로(표면과 같은 칸) y = 0 반투명
   let sea = null;
   if (A.minIn < 0) {
-    const sp = A.top.positions.slice();
+    const tp = A.top.positions, ti = A.top.index;
+    const sp = tp.slice();
     for (let k = 1; k < sp.length; k += 3) sp[k] = 0;
-    sea = new THREE.Mesh(geometry({ positions: sp, index: A.top.index }),
-      new THREE.MeshLambertMaterial({ color: 0x4f7fa8, transparent: true, opacity: 0.3, depthWrite: false }));
+    // 해발 0 m 아래 꼭짓점이 있는 삼각형만, 해안 저지대와 겹치면 지형이 이기게(polygonOffset)
+    const si = [];
+    for (let t = 0; t < ti.length; t += 3) {
+      if (tp[ti[t] * 3 + 1] < 0 || tp[ti[t + 1] * 3 + 1] < 0 || tp[ti[t + 2] * 3 + 1] < 0) si.push(ti[t], ti[t + 1], ti[t + 2]);
+    }
+    sea = new THREE.Mesh(geometry({ positions: sp, index: Uint32Array.from(si) }),
+      new THREE.MeshLambertMaterial({ color: 0x4f7fa8, transparent: true, opacity: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }));
     sea.renderOrder = 2;
     model.add(sea);
   }
@@ -119,25 +125,36 @@ export function createViewer(el, payload) {
   const sample = sampler(grid);
   const P = A.project;
   const lift = S * 0.004;
-  const routes = new THREE.Group(), points = new THREE.Group();
-  scene.add(routes, points);
-  const draped = (overlay ? overlay.lines : []).map((l) => {
-    const pts = drape(l.coords, sample, Math.max(1, S / 300));
+  const routes = new THREE.Group(), points = new THREE.Group(), outlines = new THREE.Group();
+  scene.add(routes, points, outlines);
+  // 선을 지형에 얹고 구역 안 구간(run)만 남긴다
+  const runsOf = (coords) => {
+    const pts = drape(coords, sample, Math.max(1, S / 300));
     const runs = []; let cur = [];
     for (const p of pts) {
       if (contains(region, p[0], p[1])) cur.push(p);
       else if (cur.length) { runs.push(cur); cur = []; }
     }
     if (cur.length) runs.push(cur);
-    return { runs, endIn: contains(region, ...l.coords[l.coords.length - 1]) };
-  });
+    return runs;
+  };
+  const draped = (overlay ? overlay.lines : []).map((l) => ({ runs: runsOf(l.coords), endIn: contains(region, ...l.coords[l.coords.length - 1]) }));
+  // 영역 테두리(겹친 영역도 구분되게)
+  const rings = (g) => (g.type === 'Polygon' ? g.coordinates : g.coordinates.flat());
+  const edges = (overlay ? overlay.areas : []).map((a) => ({ color: a.color, runs: rings(a.geom).flatMap(runsOf) }));
   const pins = (overlay ? overlay.points : []).filter((p) => contains(region, p.lon, p.lat));
   const lineMat = new THREE.LineBasicMaterial({ color: 0x111111 });
   const coneMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
   const pinMat = new THREE.MeshBasicMaterial({ color: 0xb3261e });
   const y3 = (m) => (Math.max(m, 0) / 1000) * exag + lift;
+  const toV = (run, up) => run.map(([lon, lat, m]) => { const [x, z] = P(lon, lat); return new THREE.Vector3(x, y3(m) - up, z); });
+  const edgeMats = new Map();
   function placeOverlay() {
-    routes.clear(); points.clear();
+    routes.clear(); points.clear(); outlines.clear();
+    for (const e of edges) {
+      if (!edgeMats.has(e.color)) edgeMats.set(e.color, new THREE.LineBasicMaterial({ color: e.color }));
+      for (const run of e.runs) if (run.length > 1) outlines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(toV(run, lift * 0.6)), edgeMats.get(e.color)));
+    }
     for (const d of draped) {
       d.runs.forEach((run, ri) => {
         if (run.length < 2) return;
@@ -186,6 +203,7 @@ export function createViewer(el, payload) {
   });
   if (sea) q('sea').addEventListener('change', (e) => { sea.visible = e.target.checked; });
   if (hasAreas) q('areas').addEventListener('change', (e) => {
+    outlines.visible = e.target.checked;
     topGeom.getAttribute('color').copyArray(e.target.checked ? tinted : plain);
     topGeom.getAttribute('color').needsUpdate = true;
   });
@@ -219,6 +237,7 @@ export function createViewer(el, payload) {
   })();
 
   return {
+    scene, camera, model,
     get exag() { return exag; },
     dispose() {
       alive = false; ro.disconnect(); controls.dispose(); renderer.dispose();
