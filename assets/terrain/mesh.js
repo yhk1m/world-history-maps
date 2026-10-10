@@ -25,7 +25,7 @@ function ramp(stops, m) {
 }
 export const hypso = (m) => (m < 0 ? ramp(SEA, m) : ramp(LAND, m));
 
-// opts.tintGrid: Float32Array(w*h*4) — 정점마다 [r,g,b,a], 역사 지도 영역색을 표면에 a 만큼 섞는다(overlay.tintGrid).
+// opts.tintGrid: Float32Array(w*h*4) — 정점마다 [r,g,b,a], 교과서 지도 영역색을 표면에 a 만큼 섞는다(overlay.tintGrid).
 export function buildArrays(grid, geom, { tintGrid } = {}) {
   const { w, h, bbox, data } = grid;
   const [bw, bs, be, bn] = bbox;

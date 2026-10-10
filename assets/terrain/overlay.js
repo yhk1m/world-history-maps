@@ -1,5 +1,5 @@
 // © 2026 김용현
-// 역사 지도 덮기: 구역 bbox 와 겹치는 영역·경로·지점만 골라 경도를 이어 붙이고,
+// 지도 자료 덮기: 구역 bbox 와 겹치는 영역·경로·지점만 골라 경도를 이어 붙이고,
 // 영역은 정점별 색(tintGrid), 경로는 지형을 따라가는 3D 선(drape)으로 만든다. three 에 의존하지 않는다.
 
 import { unwrapGeom, unwrapRing, bboxOf, scanMask, KM_LON, KM_LAT } from './clip.js';

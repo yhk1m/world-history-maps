@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3D 지형 — SpaceArchive</title>
-<meta name="description" content="구역을 골라 해저까지 담은 3D 지형 위에 세계사 지도를 덮어 보고, 파일 하나짜리 HTML 로 내보냅니다.">
+<meta name="description" content="구역을 골라 해저까지 담은 3D 지형을 만들고, 단면도·해수면 조절·지도 덮기를 해 본 뒤 파일 하나짜리 HTML 로 내보냅니다.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -43,7 +43,7 @@
 <div class="t-wrap">
   <aside class="t-panel">
     <h1>3D 지형</h1>
-    <p class="t-lede">구역을 고르면 해저까지 담은 3D 지형을 만들고, 역사 지도를 그 위에 덮습니다.</p>
+    <p class="t-lede">구역을 고르면 해저까지 담은 3D 지형을 만듭니다. 교과서 지도나 내 GeoJSON 을 그 위에 덮을 수도 있습니다.</p>
 
     <h2><span>1</span>구역 고르기</h2>
     <div class="chips" id="modes">
@@ -82,7 +82,7 @@
     </div>
 
     <h2><span>2</span>덮을 자료</h2>
-    <select id="overMap" class="t-q" aria-label="덮을 역사 지도"><option value="">역사 지도 없음</option></select>
+    <select id="overMap" class="t-q" aria-label="덮을 교과서 지도"><option value="">교과서 지도 없음</option></select>
     <button id="wholeMap" class="btn ghost t-small" disabled>이 지도 전체를 구역으로</button>
     <label class="t-file">내 GeoJSON 덮기 <small>(크로키에서 저장한 파일 등)</small><input id="userGeo" type="file" accept=".geojson,.json,application/geo+json,application/json"></label>
     <p id="userGeoInfo" class="t-help" hidden><span></span> <button id="userGeoClear" class="t-link">빼기</button></p>

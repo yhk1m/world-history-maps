@@ -1,5 +1,5 @@
 // © 2026 김용현
-// 크로키 레시피: 역사 지도를 깔고 펜·형광펜·화살표·글자로 그린 뒤 PNG·GeoJSON 으로 저장.
+// 크로키 레시피: 바탕 지도를 깔고 펜·형광펜·화살표·글자로 그린 뒤 PNG·GeoJSON 으로 저장.
 // d3 는 전역(index.html 의 script). 획은 경위도로 저장해 확대·이동해도 땅에 붙는다.
 
 import { createStore } from './strokes.js';

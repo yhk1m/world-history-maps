@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SpaceArchive</title>
-<meta name="description" content="교과서 지도를 공간 데이터로 — 세계사 교과서 지도 76개 GeoJSON, 한국사 시기별 영토, 3D 지형.">
+<meta name="description" content="교과서 지도를 공간 데이터로 — 역사·지리·지구과학 수업에 쓰는 지도 아카이브. 교과서 지도 GeoJSON, 해저까지 담은 3D 지형, 단면도, 지도 위 크로키.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -31,13 +31,13 @@
 
 <main>
 <section class="hero">
-  <h1 class="reveal">Mapping World History<br>From Page To Data</h1>
+  <h1 class="reveal">Textbook Maps<br>From Page To Data</h1>
   <div class="hero-cols">
-    <p class="hero-en reveal">Seventy-six textbook maps, georeferenced and redrawn<br>as open vector data — territories, routes and places.</p>
+    <p class="hero-en reveal">Textbook maps, georeferenced and redrawn<br>as open vector data — for history, geography and earth science.</p>
     <div class="hero-ko reveal">
-      <p>교과서 속 세계사 지도를</p>
-      <p>웹지도 위에 다시 그렸습니다.<br>제국의 영역, 원정과 교역의 길, 도시와 격전지.</p>
-      <p>모두 GeoJSON 으로 내려받아<br>수업과 탐구에 바로 쓸 수 있습니다.</p>
+      <p>교과서 속 지도를</p>
+      <p>웹지도 위에 다시 그렸습니다.<br>영역과 길, 장소, 그리고 땅과 바다의 높낮이.</p>
+      <p>모두 GeoJSON 으로 내려받아<br>역사·지리·지구과학 수업에 바로 쓸 수 있습니다.</p>
     </div>
   </div>
   <figure class="stage" id="stage">
@@ -142,7 +142,7 @@ frames.forEach((f, i) =&gt; {
   <article class="recipe scen sketch">
     <div class="r-text">
       <h3><span>B</span>크로키 — 지도 위에 그리며 생각하기</h3>
-      <p>역사 지도를 깔고 펜·형광펜·화살표·글자로 그려 봅니다. 그린 선은 경위도로 저장되어 확대해도 땅에 붙어 있고, 그림은 PNG 로, 선과 글자는 GeoJSON 으로 내보낼 수 있습니다.</p>
+      <p>바탕 지도를 깔고 펜·형광펜·화살표·글자로 그려 봅니다. 그린 선은 경위도로 저장되어 확대해도 땅에 붙어 있고, 그림은 PNG 로, 선과 글자는 GeoJSON 으로 내보낼 수 있습니다.</p>
       <select id="skMap" class="sk-map" aria-label="바탕 지도"></select>
       <div class="chips" id="skTools" aria-label="도구">
         <button class="on" data-tool="pen">펜</button>
@@ -238,8 +238,8 @@ print(g[['name', 'period', 'km2']].sort_values('km2'))</code></pre>
 
   <article class="recipe">
     <div class="r-text">
-      <h3><span>F</span>3D 지형 — 땅의 높낮이 위에서 보는 역사 지도</h3>
-      <p>구역을 직접 그리거나 네모·세모·원 틀, 현대 국가·대륙, 과거 영토(세계사 교과서 지도 + 한국사 시기별 영토)로 고르면, 해저까지 담은 3D 지형 위에 역사 지도의 영역·경로·지점을 덮어 보여 줍니다. 만든 모형은 인터넷 없이도 열리는 HTML 파일 하나로 내보낼 수 있습니다.</p>
+      <h3><span>F</span>3D 지형 — 땅과 바다의 높낮이를 입체로</h3>
+      <p>구역을 직접 그리거나 네모·세모·원 틀, 현대 국가·대륙, 과거 영토로 고르면 해저까지 담은 3D 지형을 만듭니다. 단면도를 긋고 해수면을 올리고 내려 볼 수 있고, 교과서 지도나 내 GeoJSON 을 그 위에 덮을 수도 있습니다. 만든 모형은 인터넷 없이도 열리는 HTML 파일 하나로 내보낼 수 있습니다.</p>
       <pre class="code"><code>// 고도: AWS Terrain Tiles(Terrarium) — 높이 = R·256 + G + B/256 − 32768 m
 const grid = await loadGrid(bbox);                 // 구역 범위의 고도 격자
 const viewer = createViewer(el, { grid, region, overlay });</code></pre>
@@ -255,7 +255,10 @@ const viewer = createViewer(el, { grid, region, overlay });</code></pre>
         <li><b>길 따라가기</b> 알렉산드로스 원정로의 총 길이를 재고 하루 행군 거리를 추정.</li>
         <li><b>오늘의 나라와 비교</b> 영역과 현대 국경을 겹쳐 지금 어느 나라들에 걸쳐 있는지 찾기.</li>
         <li><b>버퍼 분석</b> 교역로에서 100 km 안 도시들 — 길이 도시를 만든다.</li>
-        <li><b>타임랩스</b> 지도 쪽 순서대로 영역을 넘기며 세계사 흐름을 한 장면으로.</li>
+        <li><b>타임랩스</b> 지도 쪽 순서대로 영역을 넘기며 역사의 흐름을 한 장면으로.</li>
+        <li><b>단면도</b> 히말라야·안데스·알프스를 가로질러 단면을 긋고 산지의 높이와 모양을 비교.</li>
+        <li><b>빙하기 해수면</b> 해수면을 −120 m 로 내려 황해·베링 해협이 육지로 드러나는 모습 보기.</li>
+        <li><b>해구와 해령</b> 일본 해구·대서양 중앙 해령을 3D 와 단면도로 — 판의 경계를 지형으로 읽기.</li>
       </ul>
     </div>
   </article>
@@ -279,7 +282,7 @@ const viewer = createViewer(el, { grid, region, overlay });</code></pre>
   <div class="sec-head"><span class="num">05</span><h2>Source &amp; Terms</h2><p>출처와 이용 조건</p></div>
   <div class="two">
     <p>원본: 미래엔 고등학교 「세계사」 교과서 지도. 이 데이터는 교과서 지도를 바탕으로 다시 그린 2차 자료이며, 교과서 그림 자체는 포함하지 않습니다. 교육·비영리 목적으로 출처를 밝혀 자유롭게 쓸 수 있습니다.</p>
-    <p class="cite">인용 예 — 김용현(2026). SpaceArchive: 세계사·한국사 지도 GeoJSON과 3D 지형. https://github.com/yhk1m/space-archive<br><br>해안선·국경: Natural Earth(퍼블릭 도메인). 배경 지도: © OpenStreetMap contributors.</p>
+    <p class="cite">인용 예 — 김용현(2026). SpaceArchive: 교과서 지도 공간 데이터와 3D 지형. https://github.com/yhk1m/space-archive<br><br>해안선·국경: Natural Earth(퍼블릭 도메인). 배경 지도: © OpenStreetMap contributors.</p>
   </div>
 </section>
 </main>

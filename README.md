@@ -1,6 +1,6 @@
 # SpaceArchive
 
-교과서 속 지도를 웹지도 위에 다시 그린 **공간 데이터 아카이브**입니다. 지금은 고등학교 「세계사」(미래엔) 교과서 지도 76개와 한국사 시기별 영토, 3D 지형 도구가 들어 있습니다.
+교과서 속 지도를 웹지도 위에 다시 그린 **공간 데이터 아카이브**입니다. 역사·지리·지구과학 등 과목을 가리지 않고 쓰도록 만들었고, 지금은 고등학교 「세계사」(미래엔) 교과서 지도 76개와 한국사 시기별 영토, 3D 지형 도구가 들어 있습니다.
 영역 473 · 경로·경계선 421 · 지점 688 · 나라별 모음 327.
 
 - 소개·활용 안내 페이지: https://yhk1m.github.io/space-archive/
@@ -36,7 +36,7 @@ https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/maps/{지도}/{파일}
 (한글 경로는 `encodeURIComponent` 로 인코딩)
 
 ## 3D 지형 (`terrain.html`)
-구역(직접 그리기 · 네모·세모·원 틀 · 현대 국가 · 대륙 · 과거 영토)을 고르면 해저까지 담은 3D 지형 위에 역사 지도를 덮어 보여 주고, 인터넷 없이 열리는 HTML 파일 하나로 내보낸다.
+구역(직접 그리기 · 네모·세모·원 틀 · 현대 국가 · 대륙 · 과거 영토)을 고르면 해저까지 담은 3D 지형을 만든다. 단면도(csat-chart.js 시험지 양식)·해수면 조절·교과서 지도나 내 GeoJSON 덮기를 할 수 있고, 인터넷 없이 열리는 HTML 파일 하나로 내보낸다.
 - 고도·수심: [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)(Terrarium, SRTM·GEBCO·ETOPO1 등)
 - 현대 국가·대륙: Natural Earth 10m 간략판(`data/lite/ne_countries.json`)
 - 한국사 시기별 영토: `data/lite/maps/한국사_*.json`, 목록 `data/lite/korea_index.json` (史뿐史뿐 한국사 아틀라스 영토 자료)
@@ -57,4 +57,4 @@ https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/maps/{지도}/{파일}
 - 해안선·국경: Natural Earth(퍼블릭 도메인).
 - 웹페이지 코드(`index.html`, `assets/`): MIT.
 
-인용: 김용현(2026). SpaceArchive: 세계사·한국사 지도 GeoJSON과 3D 지형. https://github.com/yhk1m/space-archive
+인용: 김용현(2026). SpaceArchive: 교과서 지도 공간 데이터와 3D 지형. https://github.com/yhk1m/space-archive

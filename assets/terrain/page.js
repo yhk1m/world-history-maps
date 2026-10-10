@@ -11,7 +11,7 @@ import { buildHTML, download } from 'whm/export';
 const DATA = 'data/';
 // 지형 고도색(초록·황갈)과 섞여도 구분되도록 초록 계열은 뺀 영역 색
 const PALETTE = ['#b3261e', '#1f4e79', '#6a3d9a', '#b8860b', '#c2185b', '#00838f', '#5d4037', '#455a64'];
-const CREDITS = ['고도·수심: AWS Terrain Tiles (SRTM, GEBCO, ETOPO1 등)', '경계: Natural Earth', '역사 지도: SpaceArchive (yhk1m.github.io/space-archive)'];
+const CREDITS = ['고도·수심: AWS Terrain Tiles (SRTM, GEBCO, ETOPO1 등)', '경계: Natural Earth', '지도 자료: SpaceArchive (yhk1m.github.io/space-archive)'];
 const $ = (id) => document.getElementById(id);
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
 const enc = (s) => s.split('/').map(encodeURIComponent).join('/');
@@ -89,7 +89,7 @@ function boxAround(coordsLists, pad = 0.04) {
   return { type: 'Polygon', coordinates: [[[w - pw, s - ph], [e + pw, s - ph], [e + pw, n + ph], [w - pw, n + ph], [w - pw, s - ph]]] };
 }
 
-// 덮을 자료: 역사 지도 + 내 GeoJSON. 3D 가 있으면 바로 바꿔 덮는다(시나리오 재생 중에는 시나리오가 우선)
+// 덮을 자료: 교과서 지도 + 내 GeoJSON. 3D 가 있으면 바로 바꿔 덮는다(시나리오 재생 중에는 시나리오가 우선)
 async function overlayFor(bbox) {
   const id = $('overMap').value;
   const base = id ? prepareOverlay(await loadMap(id), bbox, PALETTE) : null;
