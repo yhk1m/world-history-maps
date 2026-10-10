@@ -34,5 +34,10 @@ input[type="file"]::file-selector-button:hover { background: var(--seed-color-bg
 .sk-colors button { border-radius: 50%; }
 /* 레시피가 없는 작은 단추·상자도 SEED 모서리·테두리에 맞춤 */
 .sk-layers { border-radius: var(--seed-radius-r2); border-color: var(--seed-color-stroke-neutral-weak); overflow: hidden; }
-.sk-fit, .t-max-btn { border-radius: var(--seed-radius-r2); border: 1px solid var(--seed-color-stroke-neutral-weak); font-weight: var(--seed-font-weight-bold, 700); }
-.t-max-btn:hover { background: var(--seed-color-bg-neutral-solid); color: var(--seed-color-fg-on-neutral-solid); }
+.sk-fit { border-radius: var(--seed-radius-r2); border: 1px solid var(--seed-color-stroke-neutral-weak); font-weight: var(--seed-font-weight-bold, 700); }
+/* 크게 보기 단추(SEED action-button)는 지도·3D 위에 떠 있으니 흰 바탕을 깐다 */
+.t-max-btn.seed-action-button { position: absolute; background: var(--seed-color-bg-layer-floating, #fff); box-shadow: var(--seed-shadow-s1); }
+/* 3D 를 크게 볼 때 떠 있는 보기 창: SEED 떠 있는 면(floating) — 둥근 모서리·그림자 */
+.t-dock { width: 330px; background: var(--seed-color-bg-layer-floating, #fff); border: 0; border-radius: var(--seed-radius-r3); box-shadow: var(--seed-shadow-s3); padding: 6px 18px 16px; }
+/* 슬라이더도 중립색 */
+input[type="range"] { accent-color: var(--seed-color-bg-neutral-solid, #2a3038); }

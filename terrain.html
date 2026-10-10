@@ -146,16 +146,22 @@
 
   <section class="t-stage">
     <div id="selWrap" class="t-box t-selwrap">
-      <div id="selMap" class="t-sel" data-mode="draw" aria-label="구역 선택 지도"></div>
-      <button class="t-max-btn" data-max="selWrap" aria-label="지도 크게 보기">크게 보기</button>
+      <div class="t-pane-head"><b>지도</b><span>구역 고르기 · 단면선</span><button class="t-fold btn ghost t-small" data-fold="selWrap" aria-expanded="true">접기</button></div>
+      <div class="t-pane-body">
+        <div id="selMap" class="t-sel" data-mode="draw" aria-label="구역 선택 지도"></div>
+        <button class="t-max-btn btn ghost t-small" data-max="selWrap" aria-label="지도 크게 보기">크게 보기</button>
+      </div>
     </div>
     <div id="viewWrap" class="t-box t-viewwrap">
-      <div id="view" class="t-view"><p class="t-empty">구역을 고르고 「3D 만들기」를 누르세요.</p></div>
-      <button class="t-max-btn" data-max="viewWrap" aria-label="3D 크게 보기">크게 보기</button>
-      <div id="viewDock" class="t-dock" hidden></div>
+      <div class="t-pane-head"><b>3D 모형</b><span>돌리기 · 확대 · 더블클릭으로 중심 옮기기</span><button class="t-fold btn ghost t-small" data-fold="viewWrap" aria-expanded="true">접기</button></div>
+      <div class="t-pane-body">
+        <div id="view" class="t-view"><p class="t-empty">구역을 고르고 「3D 만들기」를 누르세요.</p></div>
+        <button class="t-max-btn btn ghost t-small" data-max="viewWrap" aria-label="3D 크게 보기">크게 보기</button>
+        <div id="viewDock" class="t-dock" hidden></div>
+      </div>
     </div>
     <div id="profileBox" class="t-profile" hidden>
-      <div class="t-profile-head"><b>지형 단면도</b><span class="t-pf-toggles"><label class="t-check"><input id="pfTitle" type="checkbox" checked> 제목</label><label class="t-check"><input id="pfAxis" type="checkbox" checked> 해발고도</label><label class="t-check"><input id="pfSea" type="checkbox" checked> 해수면</label><label class="t-check"><input id="profileNotes" type="checkbox" checked> 각주</label></span><button id="profilePng" class="btn ghost t-small">그래프 PNG</button><button id="profileClose" class="t-link">닫기</button></div>
+      <div class="t-profile-head"><b>지형 단면도</b><span class="t-pf-toggles"><label class="t-check"><input id="pfTitle" type="checkbox" checked> 제목</label><label class="t-check"><input id="pfAxis" type="checkbox" checked> 해발고도</label><label class="t-check"><input id="pfSea" type="checkbox" checked> 해수면</label><label class="t-check"><input id="profileNotes" type="checkbox" checked> 각주</label></span><button id="profilePng" class="btn ghost t-small">그래프 PNG</button><button id="profileClose" class="btn ghost t-small">닫기</button></div>
       <canvas id="profileChart" width="900" height="600"></canvas>
     </div>
   </section>

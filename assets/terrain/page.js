@@ -179,6 +179,7 @@ async function make(geom0, title, overlayOf) {
     const overlay = await overlayOf(bbox);
     const payload = { title, grid, region: geom, overlay, credits: CREDITS };
     if (viewer) viewer.dispose();
+    if ($('viewWrap').classList.contains('t-folded')) setFold('viewWrap', false);
     viewer = createViewer($('view'), payload, { inlineUI: false });
     last = payload; savedView = null;
     viewer.setCenterVisible($('centerOn').checked);
@@ -242,6 +243,7 @@ $('viewPng').addEventListener('click', () => {
 // 3D 가 있고 선이 그 범위 안이면 그 격자를, 아니면 선 둘레의 고도를 따로 받아 쓴다(3D 없이도 된다)
 $('profileBtn').addEventListener('click', () => {
   const on = sel.mode !== 'profile';
+  if (on && $('selWrap').classList.contains('t-folded')) setFold('selWrap', false);
   sel.setMode(on ? 'profile' : selModeOf(tabMode));
   $('profileBtn').classList.toggle('on', on);
   if (on) status('위 지도에 단면선을 그으세요 — 클릭으로 점, 오른쪽 클릭으로 끝.');
@@ -470,6 +472,24 @@ function toggleMax(id, on) {
 }
 document.querySelectorAll('.t-max-btn').forEach((b) => b.addEventListener('click', () => toggleMax(b.dataset.max)));
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = document.querySelector('.t-maxed'); if (m) toggleMax(m.id, false); } });
+
+// 지도·3D 모형 창 접고 펴기(상태 기억). 접힌 창은 머리글만 남고 다른 창이 자리를 채운다
+function setFold(id, folded) {
+  const box = $(id), b = box.querySelector('.t-fold');
+  box.classList.toggle('t-folded', folded);
+  b.textContent = folded ? '펴기' : '접기';
+  b.setAttribute('aria-expanded', String(!folded));
+  document.querySelector('.t-stage').classList.toggle(id === 'selWrap' ? 'sel-folded' : 'view-folded', folded);
+  try { localStorage.setItem('sa-terrain-fold-' + id, folded ? '1' : '0'); } catch { /* 저장 불가 */ }
+  if (!folded) setTimeout(() => sel.invalidate(), 60);
+}
+document.querySelectorAll('.t-fold').forEach((b) => {
+  const id = b.dataset.fold;
+  let saved = null;
+  try { saved = localStorage.getItem('sa-terrain-fold-' + id); } catch { /* 저장 불가 */ }
+  if (saved === '1') setFold(id, true);
+  b.addEventListener('click', () => setFold(id, !$(id).classList.contains('t-folded')));
+});
 
 // HTML 내보내기: 지금 덮은 자료·높이 과장·해수면·(기억한) 시점 그대로
 $('export').addEventListener('click', async () => {

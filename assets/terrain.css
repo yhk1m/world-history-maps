@@ -53,9 +53,8 @@
 
 /* 크게 보기 · 사이드바 보기 칸 · 단면도 */
 .t-box { position: relative; min-height: 0; }
-.t-max-btn { position: absolute; top: 10px; right: 10px; z-index: 1001; font: inherit; font-size: 12px; background: rgba(255,255,255,.95); border: 1px solid var(--ink); padding: 5px 10px; cursor: pointer; }
+.t-max-btn { position: absolute; top: 10px; right: 10px; z-index: 1001; }
 .t-viewwrap .t-max-btn { right: 66px; top: 18px; }
-.t-max-btn:hover { background: var(--ink); color: #fff; }
 .t-box.t-maxed { position: fixed; inset: 0; z-index: 2000; background: var(--paper); }
 .t-box.t-maxed .t-view { min-height: 0; }
 body.t-noscroll { overflow: hidden; }
@@ -101,3 +100,21 @@ body.t-noscroll { overflow: hidden; }
 .t-sec > summary:hover { color: var(--accent); }
 .t-sec[open] { padding-bottom: 14px; }
 .t-dock .t-sec { border-top: 0; }
+
+/* 지도·3D 모형 창: 머리글로 접고 펴기 */
+.t-stage { grid-template-rows: minmax(320px, 46vh) minmax(480px, 1fr) auto; }
+.t-stage.sel-folded { grid-template-rows: auto minmax(480px, 1fr) auto; }
+.t-stage.view-folded { grid-template-rows: minmax(320px, calc(100vh - 170px)) auto auto; }
+.t-stage.sel-folded.view-folded { grid-template-rows: auto auto auto; }
+.t-box { display: flex; flex-direction: column; }
+.t-pane-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 16px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; min-height: 44px; box-sizing: border-box; }
+.t-pane-head span { color: var(--ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-pane-head .t-fold { margin-left: auto; flex: none; }
+.t-pane-body { position: relative; flex: 1; min-height: 0; }
+.t-box.t-folded .t-pane-body { display: none; }
+.t-viewwrap .t-pane-body .t-max-btn { right: 66px; top: 18px; }
+@media (max-width: 900px) {
+  .t-stage, .t-stage.sel-folded, .t-stage.view-folded { grid-template-rows: auto auto auto; }
+  .t-selwrap .t-pane-body { height: 320px; flex: none; }
+  .t-viewwrap .t-pane-body { height: 480px; flex: none; }
+}
