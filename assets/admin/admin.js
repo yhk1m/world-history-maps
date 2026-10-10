@@ -2,7 +2,7 @@
 // 행정구역 탐색 — 연도·단위·범위를 골라 남북한 경계를 그리고, 앞 해와 바뀐 곳을 칠한다
 import {
   LEVEL_LABEL, isRegionLevel, changePairFor, changedSets, unitChange, pairHasChanges, splitRename,
-  downloadName, displayName, sphericalAreaKm2, formatKm2, searchUnits, stepYear, morphGroups, largestRing,
+  downloadName, displayName, sphericalAreaKm2, formatKm2, searchUnits, stepYear, morphGroups, largestRing, movedUnits, splitRenamed,
 } from './logic.js';
 
 const L = window.L;
@@ -88,12 +88,19 @@ async function diffSets() {
       return new Set([...m.changedNew].map((i) => featKey(b.features[i])));
     }).catch(() => new Set()));
   }
-  const reshaped = await reshapeCache.get(ck);
-  return { pair, sets, reshaped };
+  // 모양은 그대로여도 소속 시·도가 바뀐 시·군·구(예: 군위군 경북 → 대구)는 행정 경계가 바뀐 것으로 칠한다
+  const moved = state.level === 'sigungu' ? movedUnits(pair) : new Set();
+  const reshaped = new Set([...(await reshapeCache.get(ck)), ...moved]);
+  return { pair, sets, reshaped, moved };
 }
 const reshapeCache = new Map();
+function reshapedText(p) {
+  if (curDiff.sets.added.has(p.full)) return '새로 생김(합쳐지거나 나뉨)';
+  if (curDiff.moved && curDiff.moved.has(p.full)) return `소속 시·도 바뀜: ${esc(curDiff.sets.renamedFrom.get(p.full) || '')} →`;
+  return '경계가 바뀜';
+}
 const featKey = (f) => f.properties.full || f.properties.name;
-/** 바뀐 곳 보기에서 한 단위의 상태: 'reshaped'(합쳐지거나 나뉨·경계 바뀜 → 채움) | 'renamed'(이름·소속만 → 점선) | null */
+/** 바뀐 곳 보기에서 한 단위의 상태: 'reshaped'(합쳐지거나 나뉨·경계·소속 바뀜 → 채움) | 'renamed'(이름만 → 점선) | null */
 function diffKind(f) {
   if (!curDiff || f.__who === 'kp') return null;
   if (curDiff.reshaped.has(featKey(f))) return 'reshaped';
@@ -133,10 +140,10 @@ function tipHTML(layer) {
   else sub = LEVEL_LABEL[p.level];
   let ch = '';
   const kind = diffKind(layer.feature);
-  if (kind === 'reshaped') ch = `<small>${curDiff.pair.to}년에 ${curDiff.sets.added.has(p.full) ? '새로 생김(합쳐지거나 나뉨)' : '경계가 바뀜'}</small>`;
+  if (kind === 'reshaped') ch = `<small>${curDiff.pair.to}년에 ${reshapedText(p)}</small>`;
   else if (kind === 'renamed') {
     const from = curDiff.sets.renamedFrom.get(p.full);
-    ch = `<small>${from ? `이름·소속만 바뀜: ${esc(from)} →` : '구성 시·도의 이름이 바뀜'}</small>`;
+    ch = `<small>${from ? `이름만 바뀜: ${esc(from)} →` : '구성 시·도의 이름이 바뀜'}</small>`;
   }
   return `<b>${esc(labelOf(p))}</b><small>${esc(sub)}</small>${ch}`;
 }
@@ -376,8 +383,8 @@ function showInfo(layer) {
   rows.push(['넓이', `약 ${formatKm2(sphericalAreaKm2(f.geometry))}`]);
   if (isRegionLevel(p.level)) rows.push(['구성', (p.members || []).join(', ')]);
   const dk = diffKind(f);
-  if (dk === 'reshaped') rows.push(['변경', `${curDiff.pair.from} → ${curDiff.pair.to} ${curDiff.sets.added.has(p.full) ? '새로 생김(합쳐지거나 나뉨)' : '경계 바뀜'}`]);
-  if (dk === 'renamed') rows.push(['변경', curDiff.sets.renamedFrom.get(p.full) ? `${curDiff.sets.renamedFrom.get(p.full)}에서 이름·소속만 바뀜` : '구성 시·도 이름 바뀜']);
+  if (dk === 'reshaped') rows.push(['변경', `${curDiff.pair.from} → ${curDiff.pair.to} ${reshapedText(p)}`]);
+  if (dk === 'renamed') rows.push(['변경', curDiff.sets.renamedFrom.get(p.full) ? `${curDiff.sets.renamedFrom.get(p.full)}에서 이름만 바뀜` : '구성 시·도 이름 바뀜']);
   $('info').innerHTML = `<p class="a-name">${esc(labelOf(p))}</p><dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     <p class="a-help">넓이는 단순화한 경계로 구면에서 잰 값이라 공식 면적과 조금 다릅니다.</p>`;
 }
@@ -409,7 +416,9 @@ function updateDiffPanel() {
   if (!pairHasChanges(pair)) html += '<p class="a-help">바뀐 행정구역이 없습니다.</p>';
   else {
     html += listHTML('새로 생김', '', pair.added, true);
-    html += listHTML('이름·소속 바뀜', 'ren', pair.renamed, true);
+    const sr = splitRenamed(pair);
+    html += listHTML('소속 시·도 바뀜', '', sr.moved, true);
+    html += listHTML('이름만 바뀜', 'ren', sr.renamed, true);
     html += listHTML('없어짐', 'rem', pair.removed, false);
     if (isRegionLevel(state.level)) html += '<p class="a-help">권역 단위에서는 이름이 바뀌었거나 새로 생긴 시·도를 품은 권역을 칠합니다.</p>';
     else if (state.level === 'sido') html += '<p class="a-help">시·도 단위에서는 시·도의 변경만 칠합니다. 시·군·구 변경은 「시·군·구」에서 보세요.</p>';
@@ -423,7 +432,7 @@ function buildHistory() {
     const n = { a: c.added.length, r: c.removed.length, m: c.renamed.length };
     const empty = !pairHasChanges(c);
     const sum = empty ? '바뀐 곳 없음' : `생김 ${n.a} · 없어짐 ${n.r} · 바뀜 ${n.m}`;
-    const body = empty ? '' : listHTML('새로 생김', '', c.added, false) + listHTML('이름·소속 바뀜', 'ren', c.renamed, false) + listHTML('없어짐', 'rem', c.removed, false)
+    const body = empty ? '' : listHTML('새로 생김', '', c.added, false) + listHTML('소속 시·도 바뀜', '', splitRenamed(c).moved, false) + listHTML('이름만 바뀜', 'ren', splitRenamed(c).renamed, false) + listHTML('없어짐', 'rem', c.removed, false)
       + `<p><button class="btn ghost a-small" data-goto="${c.to}">${c.to}년 지도에서 보기</button></p>`;
     return `<details${empty ? ' data-empty' : ''}><summary>${c.from} → ${c.to}<small>${sum}</small></summary>${body}</details>`;
   }).join('');
@@ -442,7 +451,7 @@ function updateLegend() {
     const k = diffKind(l.feature);
     if (k === 'reshaped') a++; else if (k === 'renamed') r++;
   });
-  lg.innerHTML = `<b>${curDiff.pair.from} → ${curDiff.pair.to}</b><span><i class="a-sw"></i>합쳐지거나 나뉨 · 경계 바뀜 ${a}</span><span><i class="a-sw ren"></i>이름·소속만 바뀜 ${r}</span>`;
+  lg.innerHTML = `<b>${curDiff.pair.from} → ${curDiff.pair.to}</b><span><i class="a-sw"></i>합쳐지거나 나뉨 · 경계·소속 바뀜 ${a}</span><span><i class="a-sw ren"></i>이름만 바뀜 ${r}</span>`;
   lg.hidden = false;
 }
 

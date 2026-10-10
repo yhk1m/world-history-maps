@@ -40,6 +40,32 @@ export function changedSets(pair, level) {
   return out;
 }
 
+/**
+ * 시·군·구 이름 바뀜 가운데 소속 시·도가 실제로 바뀐 것(시·도 이름만 바뀐 경우는 제외).
+ * 예: 경상북도 군위군 → 대구광역시 군위군(소속 바뀜), 강원도 춘천시 → 강원특별자치도 춘천시(이름만).
+ */
+export function sidoMoved(from, to, pair) {
+  const oldSido = String(from).split(' ')[0], newSido = String(to).split(' ')[0];
+  if (oldSido === newSido || !String(from).includes(' ')) return false;
+  const ren = new Map(((pair && pair.sido && pair.sido.renamed) || []).map((r) => [r.from, r.to]));
+  return (ren.get(oldSido) || oldSido) !== newSido;
+}
+/** 이번 변경에서 소속 시·도가 바뀐 시·군·구(새 이름) */
+export function movedUnits(pair) {
+  const out = new Set();
+  for (const r of (pair && pair.sigungu && pair.sigungu.renamed) || []) if (sidoMoved(r.from, r.to, pair)) out.add(r.to);
+  return out;
+}
+/** "갑 → 을" 목록을 소속 바뀜 / 이름만 바뀜으로 나눈다 */
+export function splitRenamed(pair) {
+  const moved = [], renamed = [];
+  for (const s of (pair && pair.renamed) || []) {
+    const [a, b] = splitRename(s);
+    (sidoMoved(a, b, pair) ? moved : renamed).push(s);
+  }
+  return { moved, renamed };
+}
+
 /** 권역(members = 시·도 이름들)이 이번 변경에 걸리는지: 'added' | 'renamed' | null */
 export function regionTouched(members, sets) {
   let kind = null;

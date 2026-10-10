@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   changePairFor, changedSets, regionTouched, unitChange, pairHasChanges, splitRename,
-  downloadName, displayName, sphericalAreaKm2, formatKm2, searchUnits, stepYear, morphGroups, pointInGeom, largestRing,
+  downloadName, displayName, sphericalAreaKm2, formatKm2, searchUnits, stepYear, morphGroups, pointInGeom, largestRing, movedUnits, splitRenamed,
 } from '../../assets/admin/logic.js';
 
 const idx = JSON.parse(readFileSync(new URL('../../data/admin/index.json', import.meta.url), 'utf8'));
@@ -154,6 +154,18 @@ test('모핑 1985→1990 시도: 충남에서 대전직할시가 나뉜다', () 
 
 test('모핑 2024→2025 시도: 바뀐 곳 없음', () => {
   assert.equal(morphGroups(fc('kr/2024_sido.json'), fc('kr/2025_sido.json')).count, 0);
+});
+
+test('소속 시·도 바뀜: 군위군(경북 → 대구)은 칠하고 강원 시·군은 이름만', () => {
+  const pair = changePairFor(idx.changes, 2023);
+  const mv = movedUnits(pair);
+  assert.ok(mv.has('대구광역시 군위군'));
+  assert.ok(!mv.has('강원특별자치도 춘천시'));
+  const sr = splitRenamed(pair);
+  assert.deepEqual(sr.moved, ['경상북도 군위군 → 대구광역시 군위군']);
+  assert.ok(sr.renamed.includes('강원도 → 강원특별자치도'));
+  // 1985: 대구시가 경북에서 대구직할시로 — 소속 바뀜
+  assert.ok(movedUnits(changePairFor(idx.changes, 1985)).has('대구직할시 중구'));
 });
 
 test('연도 한 칸 옮기기', () => {
