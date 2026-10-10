@@ -291,12 +291,26 @@ async function drawProfile(line) {
   if (typeof CsatChart === 'undefined') { status('그래프 라이브러리를 불러오지 못했습니다.'); return; }
   fontsReady = fontsReady || CsatChart.ensureFonts().catch(() => false);
   await fontsReady;
+  // 수능 시험지 꺾은선 관습: 진한 점선 격자, 계열 하나는 이름표 없이 각주로, 바다를 지나면 해수면 점선
+  const seaLv = viewer ? viewer.seaLevel : 0;
+  const crossesSea = Math.min(...vals) < seaLv;
   const data = CsatChart.createDefaultLineData();
-  data.series = [{ label: '해발 고도', values: vals, areaFill: '#e3e1db', stroke: '#111' }];
+  data.series = [{ label: '', values: vals, areaFill: '#dcd9d2', stroke: '#111' }];
+  if (crossesSea) data.series.push({ label: '해수면', values: vals.map(() => seaLv), lineStyle: 'dashed', stroke: '#777', lineWidth: 1.8 });
   data.xLabels = labels; data.xUnit = '(km)'; data.yUnit = '(m)';
   data.yRange = { min: 0, max: 0, auto: true };
-  data.showMarkers = false; data.zeroBaseline = Math.min(...vals) < 0;
-  const config = { type: 'line', data, options: { title: `지형 단면도 A–B (약 ${Math.round(total).toLocaleString()} km)`, source: 'AWS Terrain Tiles' } };
+  data.showMarkers = false; data.zeroBaseline = false;
+  data.labelPlacement = 'lineEnd';
+  data.xGrid = true; data.gridColor = '#555'; data.gridWidth = 1;
+  const hi = Math.max(...vals), lo = Math.min(...vals);
+  const config = { type: 'line', data, options: {
+    title: '지형 단면도 (A–B)',
+    footnotes: [
+      `가로축은 A 로부터의 거리, A–B 는 약 ${Math.round(total).toLocaleString()} km 임.`,
+      `가장 높은 곳은 ${hi.toLocaleString()} m, 가장 낮은 곳은 ${lo.toLocaleString()} m 임${crossesSea ? `(해수면 ${seaLv} m 기준)` : ''}.`,
+    ],
+    source: 'AWS Terrain Tiles',
+  } };
   if (profileChart) profileChart.destroy();
   profileChart = new CsatChart('profileChart', config);
   $('profileBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
