@@ -86,3 +86,5 @@ body.t-noscroll { overflow: hidden; }
 }
 .t-maphint { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 1000; background: rgba(17,17,17,.86); color: #fff; font-size: 12.5px; padding: 6px 12px; pointer-events: none; white-space: nowrap; max-width: calc(100% - 140px); overflow: hidden; text-overflow: ellipsis; }
 .t-sel[data-mode="profile"] .t-maphint { background: #e0007a; }
+.t-check.t-inline { margin: 0 0 0 auto; }
+.t-profile-head .t-inline + .btn { margin-left: 0; }

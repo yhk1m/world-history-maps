@@ -245,7 +245,7 @@ $('profileBtn').addEventListener('click', () => {
   $('profileBtn').classList.toggle('on', on);
   if (on) status('위 지도에 단면선을 그으세요 — 클릭으로 점, 오른쪽 클릭으로 끝.');
 });
-let profileChart = null, fontsReady = null;
+let profile = null, fontsReady = null;
 async function drawProfile(line) {
   sel.setMode(selModeOf(tabMode));
   $('profileBtn').classList.remove('on');
@@ -291,31 +291,104 @@ async function drawProfile(line) {
   if (typeof CsatChart === 'undefined') { status('그래프 라이브러리를 불러오지 못했습니다.'); return; }
   fontsReady = fontsReady || CsatChart.ensureFonts().catch(() => false);
   await fontsReady;
-  // 수능 시험지 꺾은선 관습: 진한 점선 격자, 계열 하나는 이름표 없이 각주로, 바다를 지나면 해수면 점선
+  // 그래프 본체는 csat-chart.js(시험지 양식)가 화면 밖 캔버스에 그리고, 해수면·각주·출처는 composeProfile 이 덧그린다
   const seaLv = viewer ? viewer.seaLevel : 0;
+  const km = vals.map((v) => Math.round(v) / 1000);
   const crossesSea = Math.min(...vals) < seaLv;
+  const axis = CsatChart.autoRange(crossesSea ? km.concat([seaLv / 1000]) : km, 6);
   const data = CsatChart.createDefaultLineData();
-  data.series = [{ label: '', values: vals, areaFill: '#dcd9d2', stroke: '#111' }];
-  if (crossesSea) data.series.push({ label: '해수면', values: vals.map(() => seaLv), lineStyle: 'dashed', stroke: '#777', lineWidth: 1.8 });
-  data.xLabels = labels; data.xUnit = '(km)'; data.yUnit = '(m)';
-  data.yRange = { min: 0, max: 0, auto: true };
+  data.series = [{ label: '', values: km, areaFill: '#dcd9d2', stroke: '#111' }];
+  data.xLabels = labels; data.xUnit = '(km)'; data.yUnit = '(km)';
+  data.yRange = { min: axis.min, max: axis.max, step: axis.step, auto: false };
   data.showMarkers = false; data.zeroBaseline = false;
   data.labelPlacement = 'lineEnd';
   data.xGrid = true; data.gridColor = '#555'; data.gridWidth = 1;
   const hi = Math.max(...vals), lo = Math.min(...vals);
-  const config = { type: 'line', data, options: {
-    title: '지형 단면도 (A–B)',
-    footnotes: [
+  const cv = Object.assign(document.createElement('canvas'), { width: PROFILE_W, height: PROFILE_H });
+  if (profile && profile.chart) profile.chart.destroy();
+  const chart = new CsatChart(cv, { type: 'line', data, options: { title: '지형 단면도 (A–B)' } });
+  profile = {
+    chart, cv, axis, seaKm: crossesSea ? seaLv / 1000 : null, geo: plotBox(cv),
+    notes: [
       `가로축은 A 로부터의 거리, A–B 는 약 ${Math.round(total).toLocaleString()} km 임.`,
       `가장 높은 곳은 ${hi.toLocaleString()} m, 가장 낮은 곳은 ${lo.toLocaleString()} m 임${crossesSea ? `(해수면 ${seaLv} m 기준)` : ''}.`,
     ],
-    source: 'AWS Terrain Tiles',
-  } };
-  if (profileChart) profileChart.destroy();
-  profileChart = new CsatChart('profileChart', config);
+  };
+  await composeProfile($('profileChart'), 1);
   $('profileBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
-$('profilePng').addEventListener('click', () => { if (profileChart) profileChart.download(fileName('_단면도.png').replace('3D지형_', '단면도_'), { scale: 2 }); });
+
+// 그래프 틀(검은 사각) 찾기: 왼쪽 틀선은 x≈130, 위 틀선은 제목이 있으면 y≈100 (LineGraph 의 padding).
+// 아래·오른쪽 끝은 그 선을 따라가며 어두운 픽셀이 끊기는 곳으로 잰다
+const PROFILE_W = 900, PROFILE_H = 520;
+const SANS = "'HY중고딕', 'HYGothic-Medium', '돋움', 'Dotum', 'Noto Sans KR', sans-serif";
+function plotBox(cv) {
+  const { width: W, height: H } = cv, px = cv.getContext('2d').getImageData(0, 0, W, H).data;
+  const dark = (x, y) => { const i = (y * W + x) * 4; return px[i] + px[i + 1] + px[i + 2] < 330; };
+  const top = 100;
+  let bestX = 130, bestLen = 0;
+  for (let x = 124; x <= 136; x++) { let y = top + 2; while (y < H && dark(x, y)) y++; if (y - top > bestLen) { bestLen = y - top; bestX = x; } }
+  let bestY = top, right = 0;
+  for (let y = top - 3; y <= top + 3; y++) { let x = bestX + 2; while (x < W && dark(x, y)) x++; if (x > right) { right = x; bestY = y; } }
+  return { left: bestX, top: bestY, right: right - 1, bottom: top + bestLen };
+}
+// 보이는 캔버스(또는 PNG 용 큰 캔버스)에 그래프 + 해수면 점선·세로 이름 + 각주(같은 크기, 켜고 끄기) + 출처
+async function composeProfile(out, scale) {
+  const P = profile;
+  const img = await new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.src = P.chart.toDataURL({ scale }); });
+  const W = PROFILE_W, notesOn = $('profileNotes').checked;
+  const m = document.createElement('canvas').getContext('2d');
+  // 각주는 줄마다 폭에 맞춘 크기 중 가장 작은 것 하나로 통일
+  const room = W - 60;
+  let fs = 30;
+  for (const [i, t] of P.notes.entries()) { // 각주를 꺼도 출처는 같은 크기로
+    const text = '* '.repeat(i + 1) + t;
+    m.font = `${fs}px ${SANS}`;
+    while (fs > 14 && m.measureText(text).width > room) { fs--; m.font = `${fs}px ${SANS}`; }
+  }
+  const lineH = fs + 10, srcText = 'AWS Terrain Tiles';
+  const extra = notesOn ? 8 + P.notes.length * lineH : 0;
+  const srcH = lineH;
+  const H = PROFILE_H + extra + srcH;
+  out.width = W * scale; out.height = H * scale;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(img, 0, 0);
+  ctx.save(); ctx.scale(scale, scale);
+  const g = P.geo;
+  if (P.seaKm !== null) {
+    const y = g.bottom - ((P.seaKm - P.axis.min) / (P.axis.max - P.axis.min)) * (g.bottom - g.top);
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 1.6; ctx.setLineDash([9, 6]);
+    ctx.beginPath(); ctx.moveTo(g.left, y); ctx.lineTo(g.right, y); ctx.stroke(); ctx.setLineDash([]);
+    // 「해수면」 — 점선 오른쪽 끝(선 끝 이름 자리)에 작은 글자로
+    ctx.fillStyle = '#000'; ctx.font = `20px ${SANS}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('해수면', g.right + 8, y);
+  }
+  {
+    // 세로축 이름 「해발고도」 — 눈금 숫자보다 바깥, 왼쪽에 세로쓰기(그래프 높이 가운데)
+    const f = 24, chars = [...'해발고도'], step = f * 1.12, mid = (g.top + g.bottom) / 2;
+    ctx.fillStyle = '#000'; ctx.font = `${f}px ${SANS}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    chars.forEach((c, i) => ctx.fillText(c, 26, mid - (step * chars.length) / 2 + step * (i + 0.5)));
+  }
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic';
+  let y = PROFILE_H + 4;
+  if (notesOn) {
+    ctx.font = `${fs}px ${SANS}`; ctx.textAlign = 'left';
+    P.notes.forEach((t, i) => { y += lineH; ctx.fillText('* '.repeat(i + 1) + t, 30, y - 8); });
+  }
+  ctx.font = `${fs}px ${SANS}`; ctx.textAlign = 'right';
+  ctx.fillText(srcText, W - 30, y + lineH - 8);
+  ctx.restore();
+  return out;
+}
+$('profileNotes').addEventListener('change', () => { if (profile) composeProfile($('profileChart'), 1); });
+$('profilePng').addEventListener('click', async () => {
+  if (!profile) return;
+  const big = await composeProfile(document.createElement('canvas'), 2);
+  const a = document.createElement('a');
+  a.href = big.toDataURL('image/png'); a.download = fileName('_단면도.png').replace('3D지형_', '단면도_');
+  document.body.appendChild(a); a.click(); a.remove();
+});
 $('profileClose').addEventListener('click', () => { $('profileBox').hidden = true; sel.showProfile(null); if (viewer) viewer.setProfile(null); });
 
 // 시나리오 3D: 모든 프레임을 덮는 구역 하나로 지형을 만들고, 프레임마다 덮을 자료만 바꾼다
