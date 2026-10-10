@@ -44,7 +44,42 @@ export function gridSize(bbox, z, maxCells = 768) {
   return r <= 1 ? { w: long, h: Math.max(2, Math.round(long * r)) } : { w: Math.max(2, Math.round(long / r)), h: long };
 }
 
-export async function loadGrid(bbox, { maxCells = 768, fetchTile = browserFetchTile, onProgress } = {}) {
+// 튀는 값 지우기: Terrarium 타일에는 주변과 동떨어진 가짜 봉우리·구덩이가 섞여 있다
+// (예: 안산 대부도·영흥도 앞바다에 z7 2199 m, z9 1572 m, z11 410 m — 실제로는 수십 m).
+// 한 칸의 값이 둘레 (2r+1)² 칸의 중앙값에서 max(min, k × MAD) 넘게 벗어나면 그 중앙값으로 바꾼다.
+// MAD(중앙값 절대 편차)는 둘레가 원래 가파르면 커지므로 에베레스트·K2·한라산 같은 진짜 봉우리는 그대로 남는다.
+// 바로 옆 8칸과의 차이가 min 보다 작은 칸은 계산을 건너뛴다(평지·바다는 거의 다 여기서 끝나 빠르다).
+export function despike(data, w, h, { min = 150, k = 6, r = 2 } = {}) {
+  const src = Float32Array.from(data);
+  const win = new Float64Array((2 * r + 1) ** 2), dev = new Float64Array(win.length);
+  const median = (a, n) => {
+    for (let i = 1; i < n; i++) { const v = a[i]; let j = i - 1; while (j >= 0 && a[j] > v) { a[j + 1] = a[j]; j--; } a[j + 1] = v; }
+    return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
+  };
+  let fixed = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const v = src[y * w + x];
+    let lo = Infinity, hi = -Infinity;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const yy = y + dy, xx = x + dx;
+      if (yy < 0 || yy >= h || xx < 0 || xx >= w) continue;
+      const u = src[yy * w + xx];
+      if (u < lo) lo = u;
+      if (u > hi) hi = u;
+    }
+    if (v - lo <= min && hi - v <= min) continue;
+    let n = 0;
+    for (let yy = Math.max(0, y - r); yy <= Math.min(h - 1, y + r); yy++) for (let xx = Math.max(0, x - r); xx <= Math.min(w - 1, x + r); xx++) win[n++] = src[yy * w + xx];
+    const m = median(win, n);
+    for (let i = 0; i < n; i++) dev[i] = Math.abs(win[i] - m);
+    const mad = median(dev, n);
+    if (Math.abs(v - m) > Math.max(min, k * mad)) { data[y * w + x] = m; fixed++; }
+  }
+  return fixed;
+}
+
+export async function loadGrid(bbox, { maxCells = 768, fetchTile = browserFetchTile, onProgress, clean = true } = {}) {
   const z = pickZoom(bbox, maxCells);
   const n = 2 ** z;
   const { x0, y0, x1, y1 } = pxSpan(bbox, z);
@@ -69,6 +104,7 @@ export async function loadGrid(bbox, { maxCells = 768, fetchTile = browserFetchT
   };
   const queue = jobs.slice();
   await Promise.all(Array.from({ length: Math.min(8, queue.length) }, async () => { while (queue.length) await run(queue.shift()); }));
+  const spikes = clean ? despike(mosaic, mw, mh) : 0;
 
   const { w, h } = gridSize(bbox, z, maxCells);
   const [bw, bs, be, bn] = bbox;
@@ -85,7 +121,7 @@ export async function loadGrid(bbox, { maxCells = 768, fetchTile = browserFetchT
       data[j * w + i] = (mosaic[k] * (1 - ax) + mosaic[k + 1] * ax) * (1 - ay) + (mosaic[k + mw] * (1 - ax) + mosaic[k + mw + 1] * ax) * ay;
     }
   }
-  return { w, h, bbox: bbox.slice(), z, data, failed, tiles: jobs.length };
+  return { w, h, bbox: bbox.slice(), z, data, failed, tiles: jobs.length, spikes };
 }
 
 export async function browserFetchTile(z, x, y) {
