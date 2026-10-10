@@ -55,6 +55,8 @@
   2026
  ],
  "levels": [
+  "region7",
+  "regiontrad",
   "sido",
   "sigungu"
  ],
@@ -119,59 +121,87 @@
  "files": {
   "2013": {
    "kr_sido": "kr/2013_sido.json",
-   "kr_sigungu": "kr/2013_sigungu.json"
+   "kr_sigungu": "kr/2013_sigungu.json",
+   "kr_region7": "kr/2013_region7.json",
+   "kr_regiontrad": "kr/2013_regiontrad.json"
   },
   "2014": {
    "kr_sido": "kr/2014_sido.json",
-   "kr_sigungu": "kr/2014_sigungu.json"
+   "kr_sigungu": "kr/2014_sigungu.json",
+   "kr_region7": "kr/2014_region7.json",
+   "kr_regiontrad": "kr/2014_regiontrad.json"
   },
   "2015": {
    "kr_sido": "kr/2015_sido.json",
-   "kr_sigungu": "kr/2015_sigungu.json"
+   "kr_sigungu": "kr/2015_sigungu.json",
+   "kr_region7": "kr/2015_region7.json",
+   "kr_regiontrad": "kr/2015_regiontrad.json"
   },
   "2016": {
    "kr_sido": "kr/2016_sido.json",
-   "kr_sigungu": "kr/2016_sigungu.json"
+   "kr_sigungu": "kr/2016_sigungu.json",
+   "kr_region7": "kr/2016_region7.json",
+   "kr_regiontrad": "kr/2016_regiontrad.json"
   },
   "2017": {
    "kr_sido": "kr/2017_sido.json",
-   "kr_sigungu": "kr/2017_sigungu.json"
+   "kr_sigungu": "kr/2017_sigungu.json",
+   "kr_region7": "kr/2017_region7.json",
+   "kr_regiontrad": "kr/2017_regiontrad.json"
   },
   "2018": {
    "kr_sido": "kr/2018_sido.json",
-   "kr_sigungu": "kr/2018_sigungu.json"
+   "kr_sigungu": "kr/2018_sigungu.json",
+   "kr_region7": "kr/2018_region7.json",
+   "kr_regiontrad": "kr/2018_regiontrad.json"
   },
   "2019": {
    "kr_sido": "kr/2019_sido.json",
-   "kr_sigungu": "kr/2019_sigungu.json"
+   "kr_sigungu": "kr/2019_sigungu.json",
+   "kr_region7": "kr/2019_region7.json",
+   "kr_regiontrad": "kr/2019_regiontrad.json"
   },
   "2020": {
    "kr_sido": "kr/2020_sido.json",
-   "kr_sigungu": "kr/2020_sigungu.json"
+   "kr_sigungu": "kr/2020_sigungu.json",
+   "kr_region7": "kr/2020_region7.json",
+   "kr_regiontrad": "kr/2020_regiontrad.json"
   },
   "2021": {
    "kr_sido": "kr/2021_sido.json",
-   "kr_sigungu": "kr/2021_sigungu.json"
+   "kr_sigungu": "kr/2021_sigungu.json",
+   "kr_region7": "kr/2021_region7.json",
+   "kr_regiontrad": "kr/2021_regiontrad.json"
   },
   "2022": {
    "kr_sido": "kr/2022_sido.json",
-   "kr_sigungu": "kr/2022_sigungu.json"
+   "kr_sigungu": "kr/2022_sigungu.json",
+   "kr_region7": "kr/2022_region7.json",
+   "kr_regiontrad": "kr/2022_regiontrad.json"
   },
   "2023": {
    "kr_sido": "kr/2023_sido.json",
-   "kr_sigungu": "kr/2023_sigungu.json"
+   "kr_sigungu": "kr/2023_sigungu.json",
+   "kr_region7": "kr/2023_region7.json",
+   "kr_regiontrad": "kr/2023_regiontrad.json"
   },
   "2024": {
    "kr_sido": "kr/2024_sido.json",
-   "kr_sigungu": "kr/2024_sigungu.json"
+   "kr_sigungu": "kr/2024_sigungu.json",
+   "kr_region7": "kr/2024_region7.json",
+   "kr_regiontrad": "kr/2024_regiontrad.json"
   },
   "2025": {
    "kr_sido": "kr/2025_sido.json",
-   "kr_sigungu": "kr/2025_sigungu.json"
+   "kr_sigungu": "kr/2025_sigungu.json",
+   "kr_region7": "kr/2025_region7.json",
+   "kr_regiontrad": "kr/2025_regiontrad.json"
   },
   "2026": {
    "kr_sido": "kr/2026_sido.json",
-   "kr_sigungu": "kr/2026_sigungu.json"
+   "kr_sigungu": "kr/2026_sigungu.json",
+   "kr_region7": "kr/2026_region7.json",
+   "kr_regiontrad": "kr/2026_regiontrad.json"
   }
  },
  "kp": {
@@ -1063,5 +1093,149 @@
     "recoded": []
    }
   }
- ]
+ ],
+ "regions": {
+  "region7": {
+   "label": "국토 7대 권역",
+   "table": [
+    {
+     "name": "수도권",
+     "sido": [
+      "서울",
+      "인천",
+      "경기"
+     ]
+    },
+    {
+     "name": "강원권",
+     "sido": [
+      "강원"
+     ]
+    },
+    {
+     "name": "충청권",
+     "sido": [
+      "대전",
+      "세종",
+      "충청",
+      "충북",
+      "충남"
+     ]
+    },
+    {
+     "name": "호남권",
+     "sido": [
+      "광주",
+      "전라",
+      "전북",
+      "전남",
+      "전남광주"
+     ]
+    },
+    {
+     "name": "대경권",
+     "sido": [
+      "대구",
+      "경상북",
+      "경북"
+     ]
+    },
+    {
+     "name": "동남권",
+     "sido": [
+      "부산",
+      "울산",
+      "경상남",
+      "경남"
+     ]
+    },
+    {
+     "name": "제주권",
+     "sido": [
+      "제주"
+     ]
+    }
+   ]
+  },
+  "regiontrad": {
+   "label": "전통 지역 구분",
+   "table": [
+    {
+     "name": "경기",
+     "sido": [
+      "서울",
+      "인천",
+      "경기"
+     ]
+    },
+    {
+     "name": "관동",
+     "sido": [
+      "강원"
+     ]
+    },
+    {
+     "name": "호서",
+     "sido": [
+      "대전",
+      "세종",
+      "충청",
+      "충북",
+      "충남"
+     ]
+    },
+    {
+     "name": "호남",
+     "sido": [
+      "광주",
+      "전라",
+      "전북",
+      "전남",
+      "전남광주"
+     ]
+    },
+    {
+     "name": "영남",
+     "sido": [
+      "부산",
+      "대구",
+      "울산",
+      "경상",
+      "경북",
+      "경남"
+     ]
+    },
+    {
+     "name": "제주",
+     "sido": [
+      "제주"
+     ]
+    },
+    {
+     "name": "해서",
+     "sido": [
+      "황해"
+     ]
+    },
+    {
+     "name": "관서",
+     "sido": [
+      "평양",
+      "남포",
+      "평안",
+      "자강"
+     ]
+    },
+    {
+     "name": "관북",
+     "sido": [
+      "함경",
+      "양강"
+     ]
+    }
+   ],
+   "note": "관동은 남북 강원, 경기에는 서울·인천 포함"
+  },
+  "method": "e-GIS 병합(디졸브) 방식 — @turf/turf 7.3.1 union 을 첫 피처에 하나씩 적용"
+ }
 }
