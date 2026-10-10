@@ -28,6 +28,7 @@
 
 /* 체크 */
 .a-checks { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.a-checks + .a-checks { margin-top: 6px; }
 .a-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; margin: 2px 0; }
 .a-check.is-off { color: var(--ink-3); cursor: not-allowed; }
 

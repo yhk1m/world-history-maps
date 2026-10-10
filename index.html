@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SpaceArchive</title>
-<meta name="description" content="교과서 지도를 공간 데이터로 — 역사·지리·지구과학 수업에 쓰는 지도 아카이브. 교과서 지도 GeoJSON, 해저까지 담은 3D 지형, 단면도, 지도 위 크로키.">
+<meta name="description" content="바이브 코딩으로 수업 자료를 만들 때 쓰는 정확한 공간 데이터 — 교과서 지도, 한국사 영토, 연도별 행정구역, 주요 강·고속도로, 해저까지 담은 3D 지형. 주소 하나로 불러오고 파일로 저장합니다.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -25,6 +25,7 @@
 <header class="top">
   <a class="brand" href="#">SpaceArchive</a>
   <nav>
+    <a href="#vibe">바이브 코딩</a>
     <a href="#dataset">데이터</a>
     <a href="#download">받기</a>
     <a href="#recipes">활용</a>
@@ -39,13 +40,13 @@
 
 <main>
 <section class="hero">
-  <h1 class="reveal">Textbook Maps<br>From Page To Data</h1>
+  <h1 class="reveal">Accurate Maps<br>For Vibe Coding</h1>
   <div class="hero-cols">
-    <p class="hero-en reveal">Textbook maps, georeferenced and redrawn<br>as open vector data — for history, geography and earth science.</p>
+    <p class="hero-en reveal">Accurate, open spatial data for classroom apps built with AI —<br>textbook maps, boundaries, rivers, roads and terrain.</p>
     <div class="hero-ko reveal">
-      <p>교과서 속 지도를</p>
-      <p>웹지도 위에 다시 그렸습니다.<br>영역과 길, 장소, 그리고 땅과 바다의 높낮이.</p>
-      <p>모두 GeoJSON 으로 내려받아<br>역사·지리·지구과학 수업에 바로 쓸 수 있습니다.</p>
+      <p>AI 로 수업 자료를 만들 때,</p>
+      <p>AI 가 어림으로 그린 경계 대신<br>정확하고 검증된 지도 데이터를 쓰도록.</p>
+      <p>교과서 지도·행정구역·강·도로·3D 지형을<br>주소 하나로 불러오고, 파일로 저장해<br>역사·지리·지구과학 수업에 바로 씁니다.</p>
     </div>
   </div>
   <figure class="stage" id="stage">
@@ -58,8 +59,34 @@
   </figure>
 </section>
 
+<section id="vibe" class="sec">
+  <div class="sec-head"><span class="num">00</span><h2>For Vibe Coding</h2><p>이 사이트가 하는 일</p></div>
+  <div class="two">
+    <div>
+      <p>바이브 코딩으로 지도 수업 자료를 만들면, AI 는 나라 경계나 강줄기를 그럴듯하게 <b>지어내기</b> 쉽습니다. SpaceArchive 는 그 자리에 넣을 <b>정확하고 출처가 분명한 공간 데이터</b>를 모아 둔 곳입니다. 아래 주소를 AI 에게 건네면 지도를 새로 그리지 않고 이 데이터를 불러와 씁니다.</p>
+      <ul class="idea-list">
+        <li><b>교과서 지도</b> 세계사 교과서 지도 76장의 영역·경로·지점, 나라별 모음, 한국사 시기별 영토 9판.</li>
+        <li><b>행정구역</b> 남북한 시·도·시·군·구 1975~2026년, 국토 7대 권역·전통 지역 구분(영동·영서 포함), 바뀐 곳 비교. <a href="admin.html">행정구역 탐색</a></li>
+        <li><b>강·고속도로</b> 남북한 주요 강 23개, 남한 고속도로 노선.</li>
+        <li><b>3D 지형</b> 해저까지 담은 고도로 구역을 3D 모형으로, 단면도·해수면 바꾸기, 파일 하나짜리 HTML 로 저장. <a href="terrain.html">3D 지형</a></li>
+        <li><b>크로키</b> 바탕 지도 위에 그리고 그림·선을 저장, 파일 하나짜리 HTML 로도 받기.</li>
+      </ul>
+    </div>
+    <div>
+      <p class="note">AI 에게 이렇게 부탁해 보세요</p>
+      <pre class="code"><code>우리나라 시·도와 큰 강을 익히는 퀴즈 웹페이지를 만들어 줘.
+경계는 직접 그리지 말고 아래 GeoJSON 을 fetch 해서 Leaflet 으로 그려.
+https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/admin/kr/2026_sido.json
+강은 이것을 겹쳐 줘:
+https://cdn.jsdelivr.net/gh/yhk1m/space-archive@main/data/admin/rivers.json
+출처(SpaceArchive, SGIS, OpenStreetMap)를 화면 아래에 적어 줘.</code></pre>
+      <p class="note">모든 파일은 EPSG:4326(경위도)·UTF-8 이고, 출처와 가공 방법이 함께 적혀 있습니다. 직접 묶거나 나누는 편집도 파일을 AI 에게 주고 말로 부탁하면 됩니다.</p>
+    </div>
+  </div>
+</section>
+
 <section id="dataset" class="sec">
-  <div class="sec-head"><span class="num">01</span><h2>Dataset</h2><p>한 권의 교과서, 일흔여섯 장의 지도</p></div>
+  <div class="sec-head"><span class="num">01</span><h2>Dataset</h2><p>교과서 지도 76장 — 둘러보고 바로 받기</p></div>
   <div class="stats">
     <div><b id="stMaps">76</b><span>지도</span></div>
     <div><b id="stAreas">473</b><span>영역</span></div>
@@ -94,10 +121,16 @@
 │     └─ 지점.geojson
 ├─ countries/
 │  └─ {나라}/{나라}_모음.geojson
-├─ lite/            웹 시연용 가벼운 판
+├─ admin/
+│  ├─ kr/{연도}_{sido|sigungu|region7|regiontrad}.json
+│  ├─ kp/{sido|sigungu}.json    북한
+│  ├─ rivers.json             남북한 주요 강
+│  ├─ expressways.json        남한 고속도로
+│  └─ index.json              연도·변경 기록·출처
+├─ lite/            웹 시연용 가벼운 판 · 한국사 영토
 ├─ index.json       지도·나라 색인
 └─ 목록.csv</pre>
-      <p class="note">좌표계 EPSG:4326(경위도) · UTF-8 · 공개본은 약 200 m 간격으로 단순화했습니다.</p>
+      <p class="note">좌표계 EPSG:4326(경위도) · UTF-8 · 교과서 지도 공개본은 약 200 m 간격으로 단순화했습니다. 오른쪽 속성은 교과서 지도 파일 기준이며, 행정구역 파일의 속성은 <a href="admin.html">행정구역 탐색</a>의 출처 칸에 있습니다.</p>
     </div>
     <div>
       <table class="schema">
@@ -294,7 +327,7 @@ const viewer = createViewer(el, { grid, region, overlay });</code></pre>
   <div class="sec-head"><span class="num">05</span><h2>Source &amp; Terms</h2><p>출처와 이용 조건</p></div>
   <div class="two">
     <p>원본: 미래엔 고등학교 「세계사」 교과서 지도. 이 데이터는 교과서 지도를 바탕으로 다시 그린 2차 자료이며, 교과서 그림 자체는 포함하지 않습니다. 교육·비영리 목적으로 출처를 밝혀 자유롭게 쓸 수 있습니다.</p>
-    <p class="cite">인용 예 — 김용현(2026). SpaceArchive: 교과서 지도 공간 데이터와 3D 지형. https://github.com/yhk1m/space-archive<br><br>해안선·국경: Natural Earth(퍼블릭 도메인). 배경 지도: © OpenStreetMap contributors.</p>
+    <p class="cite">인용 예 — 김용현(2026). SpaceArchive: 바이브 코딩을 위한 수업용 공간 데이터. https://github.com/yhk1m/space-archive<br><br>해안선·국경: Natural Earth(퍼블릭 도메인). 남한 행정구역: 통계청 SGIS(공공누리 제1유형), 가공 vuski/admdongkor(CC BY 4.0). 북한 행정구역: geoBoundaries(CC BY 3.0 IGO). 강·고속도로·배경 지도: © OpenStreetMap contributors(ODbL). 고도·수심: AWS Terrain Tiles.</p>
   </div>
 </section>
 </main>
@@ -307,10 +340,12 @@ const viewer = createViewer(el, { grid, region, overlay });</code></pre>
   <div class="f-right">
     <div class="f-grid">
       <span>데이터</span><b>GeoJSON · EPSG:4326</b>
-      <span>지도</span><b>76</b>
+      <span>저장</span><b>GeoJSON · PNG · HTML</b>
+      <span>교과서 지도</span><b>76</b>
+      <span>행정구역</span><b>1975–2026</b>
       <span>문의</span><b>bgnlkim@gmail.com</b>
     </div>
-    <p class="f-copy">© 2026 김용현 · Data derived from textbook maps for education.</p>
+    <p class="f-copy">© 2026 김용현 · Accurate spatial data for vibe coding in the classroom.</p>
   </div>
 </footer>
 

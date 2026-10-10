@@ -15,7 +15,7 @@ const PLAY_MS = 1600;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 let idx = null;
-const state = { year: 2025, level: 'sigungu', kr: true, kp: true, base: true, diff: false, morph: true };
+const state = { year: 2025, level: 'sigungu', kr: true, kp: true, base: true, diff: false, morph: true, river: false, road: false };
 const cache = new Map();
 let map, baseLayer, layers = [], renderSeq = 0, playTimer = null;
 let selKey = null, hoverLayer = null;
@@ -29,7 +29,7 @@ function loadState() {
     if (s && typeof s === 'object') {
       if (idx.years.includes(Number(s.year))) state.year = Number(s.year);
       if (idx.levels.includes(s.level)) state.level = s.level;
-      for (const k of ['kr', 'kp', 'base', 'diff', 'morph']) if (typeof s[k] === 'boolean') state[k] = s[k];
+      for (const k of ['kr', 'kp', 'base', 'diff', 'morph', 'river', 'road']) if (typeof s[k] === 'boolean') state[k] = s[k];
     }
   } catch { /* 저장소를 못 씀 */ }
 }
@@ -495,6 +495,7 @@ function updateDownloads() {
     [f.kr_sido, `${state.year} 대한민국 시·도`], [f.kr_sigungu, `${state.year} 대한민국 시·군·구`],
     [f.kr_region7, `${state.year} 국토 7대 권역`], [f.kr_regiontrad, `${state.year} 전통 지역 구분(남북)`],
     [idx.kp.sido, '북한 시·도'], [idx.kp.sigungu, '북한 시·군·구'],
+    ['rivers.json', '남북한 주요 강'], ['expressways.json', '남한 고속도로'],
   ];
   $('rawLinks').innerHTML = rows.map(([p, t]) => `<li><a href="${BASE}${esc(p)}" download>${esc(t)}</a> <small>${esc(p)}</small></li>`).join('')
     + '<li><a href="data/admin/index.json">목록·변경 기록(index.json)</a></li>';
@@ -580,6 +581,10 @@ function wire() {
     state.base = e.target.checked; saveState();
     if (state.base) baseLayer.addTo(map); else baseLayer.remove();
   });
+  for (const k of ['river', 'road']) {
+    $(k + 'On').checked = state[k];
+    $(k + 'On').addEventListener('change', (e) => { state[k] = e.target.checked; saveState(); showLines(); });
+  }
   $('morphOn').addEventListener('change', (e) => { state.morph = e.target.checked; saveState(); if (!state.morph) finishMorph(); });
   $('diffOn').addEventListener('change', (e) => { state.diff = e.target.checked; saveState(); render(); });
   $('diffBox').addEventListener('click', (e) => { const b = e.target.closest('button[data-full]'); if (b) zoomTo(b.dataset.full); });
@@ -595,6 +600,25 @@ function wire() {
   $('dl').addEventListener('click', download);
 }
 
+// 주요 강·고속도로(OSM): 경계 위에 얹는 선. 이름은 마우스를 올리면
+const LINE_STYLE = { river: { color: '#2f6db5', weight: 1.8, opacity: 0.9 }, road: { color: '#b8570f', weight: 1.6, opacity: 0.85 } };
+const lineLayers = {};
+async function showLines() {
+  for (const k of ['river', 'road']) {
+    if (!state[k]) { if (lineLayers[k]) lineLayers[k].remove(); continue; }
+    if (!lineLayers[k]) {
+      try {
+        const fc = await fetchJSON(k === 'river' ? 'rivers.json' : 'expressways.json');
+        lineLayers[k] = L.geoJSON(fc, {
+          pane: 'linePane', style: () => LINE_STYLE[k],
+          onEachFeature: (f, l) => l.bindTooltip(`<b>${esc(f.properties.name)}</b>${f.properties.ref ? `<small>${esc(f.properties.ref)}번</small>` : ''}`, { sticky: true, className: 'a-tip' }),
+        });
+      } catch { $('mapStatus').textContent = (k === 'river' ? '강' : '고속도로') + ' 자료를 불러오지 못했습니다.'; continue; }
+    }
+    if (state[k]) lineLayers[k].addTo(map);
+  }
+}
+
 function fillSources() {
   $('srcKr').textContent = idx.source.kr.attribution;
   $('srcKp').textContent = idx.source.kp.attribution;
@@ -608,6 +632,7 @@ async function main() {
   map.createPane('krPane').style.zIndex = 420;
   map.createPane('morphPane').style.zIndex = 430;
   map.getPane('morphPane').style.pointerEvents = 'none';
+  map.createPane('linePane').style.zIndex = 440;
   map.on('zoomstart', () => finishMorph());
   baseLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19, opacity: 0.45, className: 'a-base', attribution: '© OpenStreetMap contributors',
@@ -627,5 +652,6 @@ async function main() {
   buildHistory();
   syncControls();
   render({ fit: true });
+  showLines();
 }
 main();
