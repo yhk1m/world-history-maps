@@ -79,7 +79,7 @@
 .a-stage { position: sticky; top: 70px; height: calc(100vh - 70px); min-height: 460px; }
 .a-map { position: absolute; inset: 0; background: #f4f3ef; }
 .a-map .a-base { filter: grayscale(1) contrast(.9) brightness(1.04); }
-.a-map .leaflet-tooltip.a-tip { font-family: var(--ko); font-size: 12.5px; border-radius: var(--seed-radius-r2, 6px); border: 1px solid var(--line); box-shadow: var(--seed-shadow-s1, 0 1px 3px rgba(0,0,0,.15)); padding: 5px 9px; max-width: 280px; white-space: normal; }
+.a-map .leaflet-tooltip.a-tip { font-family: var(--ko); font-size: 12.5px; border-radius: var(--seed-radius-r2, 6px); border: 1px solid var(--line); box-shadow: var(--seed-shadow-s1, 0 1px 3px rgba(0,0,0,.15)); padding: 5px 9px; width: max-content; max-width: 280px; white-space: normal; }
 .a-tip b { display: block; font-weight: 600; }
 .a-tip small { display: block; color: var(--ink-2); font-size: 11.5px; }
 .a-mapstatus { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 1000; background: rgba(17,17,17,.86); color: #fff; font-size: 12.5px; padding: 6px 12px; pointer-events: none; max-width: calc(100% - 120px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: var(--seed-radius-r2, 6px); }
