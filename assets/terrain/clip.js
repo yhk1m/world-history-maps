@@ -8,7 +8,7 @@ export const KM_LAT = 110.57; // 위도 1° 의 km
 const polysOf = (geom) => (geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : []);
 
 // 고리 안에서 이웃 점 경도 차가 180° 를 넘지 않게 이은 뒤, 고리 평균 경도를 lon0 ±180 안으로 옮긴다.
-function unwrapRing(ring, lon0) {
+export function unwrapRing(ring, lon0) {
   const out = [];
   let prev = null;
   for (const [x, y] of ring) {
