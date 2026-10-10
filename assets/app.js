@@ -205,9 +205,11 @@
       [...chips.children].forEach((b, j) => b.classList.toggle('on', j === i));
       const all = [];
       cur.frames.forEach((f) => Object.values(f.areas).forEach((g) => all.push({ type: 'Feature', geometry: rewind(g) })));
+      const fit = all.concat(cur.frames.flatMap((f) => (f.routes || []).map((r) => ({ type: 'Feature', geometry: r.geometry }))));
       const fcAll = { type: 'FeatureCollection', features: all };
+      const fcFit = { type: 'FeatureCollection', features: fit };
       const c0 = d3.geoCentroid(fcAll);  // 날짜변경선 넘는 영역(태평양)도 잘리지 않게 중심 경도로 회전
-      const proj = d3.geoNaturalEarth1().rotate([-c0[0], 0]).fitExtent([[18, 18], [W - 18, H - 18]], fcAll);
+      const proj = d3.geoNaturalEarth1().rotate([-c0[0], 0]).fitExtent([[18, 18], [W - 18, H - 18]], fcFit);
       path = d3.geoPath(proj);
       landP.then((l) => l && gLand.attr('d', path(l)));
       gStatic.selectAll('*').remove(); gLay.selectAll('*').remove(); gRoute.selectAll('*').remove();
