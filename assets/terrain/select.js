@@ -21,6 +21,15 @@ export function createSelector(el, { onChange, onProfile }) {
   const profileL = L.layerGroup().addTo(map);
 
   let mode = 'draw', kind = 'rect', rot = 0, ratio = 0, shape = null, draft = [];
+  // 지도 위 안내 띠: 지금 무엇을 하는 중인지
+  const hint = L.DomUtil.create('div', 't-maphint', el);
+  const HINTS = {
+    draw: '구역 그리기 — 클릭으로 점, <b>오른쪽 클릭</b>으로 확정, Esc 취소',
+    profile: '단면선 — 클릭으로 점, <b>오른쪽 클릭</b>(또는 더블클릭)으로 끝, Esc 취소',
+    shape: '틀 — 지도에서 끌어 그리기',
+  };
+  const showHint = () => { hint.innerHTML = HINTS[mode] || ''; hint.hidden = !HINTS[mode]; };
+  showHint();
   const ll = (c) => [c[1], c[0]];
   const lonLat = (e) => [e.latlng.lng, e.latlng.lat];
 
@@ -121,7 +130,7 @@ export function createSelector(el, { onChange, onProfile }) {
   return {
     map,
     setMode(m) {
-      mode = m; draft = []; drawDraft(); el.dataset.mode = m;
+      mode = m; draft = []; drawDraft(); el.dataset.mode = m; showHint();
       if (m === 'shape') map.dragging.disable(); else map.dragging.enable();
     },
     get mode() { return mode; },

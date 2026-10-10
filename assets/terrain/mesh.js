@@ -97,3 +97,38 @@ export function buildArrays(grid, geom, { tintGrid } = {}) {
     inside, baseY, minIn, maxIn, project: P,
   };
 }
+
+// 평평한 화살표: 점 목록 [[x,y,z],…](y = 높이)를 xz 평면에서 폭 width 의 띠로, head 면 끝에 넓은 삼각형 머리.
+// 머리 길이 = 폭 × 3.2, 머리 폭 = 폭 × 2.6. 선이 머리보다 짧으면 머리·띠를 함께 줄인다. → { positions, index }
+export function flatArrow(points, width, head) {
+  const pts = points.filter((p, i) => i === 0 || Math.hypot(p[0] - points[i - 1][0], p[2] - points[i - 1][2]) > 1e-9);
+  if (pts.length < 2) return { positions: new Float32Array(0), index: new Uint32Array(0) };
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][2] - pts[i - 1][2]));
+  const total = cum[cum.length - 1];
+  let w = width, hl = width * 3.2, hw = width * 2.6;
+  if (head && total < hl * 1.25) { const k = total / (hl * 1.25); w *= k; hl *= k; hw *= k; }
+  // 몸통 = 끝에서 머리 길이만큼 뺀 곳까지
+  let shaft = pts;
+  if (head) {
+    const cut = total - hl;
+    let i = 1; while (i < pts.length - 1 && cum[i] < cut) i++;
+    const t = (cut - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1);
+    const B = pts[i - 1].map((v, q) => v + (pts[i][q] - v) * t);
+    shaft = pts.slice(0, i).concat([B]);
+  }
+  const pos = [], idx = [];
+  const normal = (a, b) => { const dx = b[0] - a[0], dz = b[2] - a[2], l = Math.hypot(dx, dz) || 1; return [-dz / l, dx / l]; };
+  shaft.forEach((p, i) => {
+    const a = shaft[Math.max(0, i - 1)], b = shaft[Math.min(shaft.length - 1, i + 1)];
+    const [nx, nz] = normal(a, b);
+    pos.push(p[0] + (nx * w) / 2, p[1], p[2] + (nz * w) / 2, p[0] - (nx * w) / 2, p[1], p[2] - (nz * w) / 2);
+    if (i) { const l0 = 2 * (i - 1), r0 = l0 + 1, l1 = 2 * i, r1 = l1 + 1; idx.push(l0, r0, l1, r0, r1, l1); }
+  });
+  if (head) {
+    const B = shaft[shaft.length - 1], T = pts[pts.length - 1], [nx, nz] = normal(B, T), o = pos.length / 3;
+    pos.push(B[0] + (nx * hw) / 2, B[1], B[2] + (nz * hw) / 2, B[0] - (nx * hw) / 2, B[1], B[2] - (nz * hw) / 2, T[0], T[1], T[2]);
+    idx.push(o, o + 1, o + 2);
+  }
+  return { positions: Float32Array.from(pos), index: Uint32Array.from(idx) };
+}

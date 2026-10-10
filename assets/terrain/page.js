@@ -206,7 +206,7 @@ $('build').addEventListener('click', () => {
 });
 
 // 보기: 높이 과장·해수면(슬라이더와 숫자 칸)·중심점·시점·PNG
-const viewInputs = ['exag', 'exagNum', 'sea', 'seaNum', 'viewSave', 'viewFit', 'viewPng', 'profileBtn'];
+const viewInputs = ['exag', 'exagNum', 'sea', 'seaNum', 'viewSave', 'viewFit', 'viewPng'];
 function syncViewUI() {
   for (const k of viewInputs) $(k).disabled = !viewer;
   $('viewLoad').disabled = !viewer || !savedView;
@@ -237,7 +237,8 @@ $('viewPng').addEventListener('click', () => {
   document.body.appendChild(a); a.click(); a.remove();
 });
 
-// 단면도: 지도에 선을 긋고 오른쪽 클릭 → 지금 3D 의 고도 격자에서 표집해 csat-chart.js 꺾은선으로
+// 단면도: 지도에 선을 긋고 오른쪽 클릭 → 고도 격자에서 표집해 csat-chart.js 꺾은선으로.
+// 3D 가 있고 선이 그 범위 안이면 그 격자를, 아니면 선 둘레의 고도를 따로 받아 쓴다(3D 없이도 된다)
 $('profileBtn').addEventListener('click', () => {
   const on = sel.mode !== 'profile';
   sel.setMode(on ? 'profile' : selModeOf(tabMode));
@@ -248,11 +249,22 @@ let profileChart = null, fontsReady = null;
 async function drawProfile(line) {
   sel.setMode(selModeOf(tabMode));
   $('profileBtn').classList.remove('on');
-  if (!last) { status('먼저 3D 를 만드세요.'); return; }
-  const [bw, bs, be, bn] = last.grid.bbox;
-  const lon0 = (bw + be) / 2;
-  const L = line.map(([x, y]) => [x + 360 * Math.round((lon0 - x) / 360), y]);
-  if (L.some(([x, y]) => x < bw || x > be || y < bs || y > bn)) status('단면선 일부가 3D 범위 밖이라, 그 구간은 가장자리 고도로 채웠습니다.');
+  let grid = last && last.grid, L = line;
+  const inside = (b, pts) => pts.every(([x, y]) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
+  if (grid) {
+    const lon0 = (grid.bbox[0] + grid.bbox[2]) / 2;
+    L = line.map(([x, y]) => [x + 360 * Math.round((lon0 - x) / 360), y]);
+  }
+  const onModel = !!grid && inside(grid.bbox, L);
+  if (!onModel) {
+    const { geom } = unwrapGeom({ type: 'Polygon', coordinates: [line.concat([line[0]])] });
+    L = geom.coordinates[0].slice(0, -1);
+    const b = bboxOf(geom), px = Math.max(0.02, (b[2] - b[0]) * 0.03), py = Math.max(0.02, (b[3] - b[1]) * 0.03);
+    status('단면선 고도를 받는 중…');
+    try {
+      grid = await loadGrid([b[0] - px, b[1] - py, b[2] + px, b[3] + py], { maxCells: 512 });
+    } catch (e) { status('고도를 받지 못했습니다: ' + e.message); return; }
+  }
   // 거리(km)를 따라 같은 간격으로 121점
   const seg = [], cum = [0];
   for (let i = 1; i < L.length; i++) {
@@ -260,7 +272,7 @@ async function drawProfile(line) {
     seg.push(Math.hypot((L[i][0] - L[i - 1][0]) * KM_LON * c, (L[i][1] - L[i - 1][1]) * KM_LAT));
     cum.push(cum[i - 1] + seg[i - 1]);
   }
-  const total = cum[cum.length - 1], N = 121, sample = sampler(last.grid), vals = [], labels = [];
+  const total = cum[cum.length - 1], N = 121, sample = sampler(grid), vals = [], labels = [];
   // 눈금: 1·2·5×10ⁿ km 간격 중 5~8칸이 되는 것, 그 배수를 처음 넘는 점에 이름
   const raw = total / 6, mag = 10 ** Math.floor(Math.log10(raw || 1));
   const tick = [1, 2, 5, 10].map((m) => m * mag).find((t) => t >= raw) || raw;
@@ -273,8 +285,9 @@ async function drawProfile(line) {
     vals.push(Math.round(sample(lon, lat)));
     if (d + 1e-9 >= nextTick) { labels.push(String(Math.round(nextTick * 10) / 10)); nextTick += tick; } else labels.push('');
   }
-  viewer.setProfile(L);
+  if (viewer) viewer.setProfile(onModel ? L : null);
   $('profileBox').hidden = false;
+  status(onModel ? '단면도를 그렸습니다. 3D 위에도 A–B 선이 있습니다.' : '단면도를 그렸습니다' + (viewer ? '(3D 범위 밖이라 3D 위에는 선을 그리지 않았습니다).' : '.'));
   if (typeof CsatChart === 'undefined') { status('그래프 라이브러리를 불러오지 못했습니다.'); return; }
   fontsReady = fontsReady || CsatChart.ensureFonts().catch(() => false);
   await fontsReady;
@@ -286,7 +299,7 @@ async function drawProfile(line) {
   const config = { type: 'line', data, options: { title: `지형 단면도 A–B (약 ${Math.round(total).toLocaleString()} km)`, source: 'AWS Terrain Tiles' } };
   if (profileChart) profileChart.destroy();
   profileChart = new CsatChart('profileChart', config);
-  $('profileBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  $('profileBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 $('profilePng').addEventListener('click', () => { if (profileChart) profileChart.download(fileName('_단면도.png').replace('3D지형_', '단면도_'), { scale: 2 }); });
 $('profileClose').addEventListener('click', () => { $('profileBox').hidden = true; sel.showProfile(null); if (viewer) viewer.setProfile(null); });

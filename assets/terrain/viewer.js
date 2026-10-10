@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildArrays, hypso } from 'whm/mesh';
+import { buildArrays, hypso, flatArrow } from 'whm/mesh';
 import { tintGrid, sampler, drape } from 'whm/overlay';
 import { contains, sizeKm } from 'whm/clip';
 
@@ -178,6 +178,12 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
   const mats = new Map();
   const lineMat = (c) => { if (!mats.has('l' + c)) mats.set('l' + c, new THREE.LineBasicMaterial({ color: c })); return mats.get('l' + c); };
   const meshMat = (c) => { if (!mats.has('m' + c)) mats.set('m' + c, new THREE.MeshBasicMaterial({ color: c })); return mats.get('m' + c); };
+  // 평평한 화살표용: 양면, 지형과 겹쳐도 화살표가 이기게
+  const flatMat = (c) => {
+    if (!mats.has('f' + c)) mats.set('f' + c, new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    return mats.get('f' + c);
+  };
+  const ARROW_W = S * 0.007; // 화살표 몸통 폭(모형 크기의 0.7%)
   const ground = (m) => Math.max(m, sea && sea.visible ? seaLevel : 0);
   const y3 = (m) => (ground(m) / 1000) * exag + lift;
   const toV = (run, up = 0) => run.map(([lon, lat, m]) => { const [x, z] = P(lon, lat); return new THREE.Vector3(x, y3(m) - up, z); });
@@ -208,15 +214,14 @@ export function createViewer(el, payload, { inlineUI = true } = {}) {
     for (const d of draped) {
       d.runs.forEach((run, ri) => {
         if (run.length < 2) return;
-        const v = toV(run);
-        routes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(v), lineMat(d.color)));
-        if (d.arrow && d.endIn && ri === d.runs.length - 1) {
-          const a = v[v.length - 2], b = v[v.length - 1];
-          const cone = new THREE.Mesh(new THREE.ConeGeometry(S * 0.006, S * 0.018, 12), meshMat(d.color));
-          cone.position.copy(b);
-          cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-          routes.add(cone);
-        }
+        // 지형 위에 납작하게 깔린 띠 + 끝의 삼각형 머리(구역 안에서 끝나는 마지막 구간만)
+        const v = toV(run).map((p) => [p.x, p.y, p.z]);
+        const f = flatArrow(v, ARROW_W, d.arrow && d.endIn && ri === d.runs.length - 1);
+        if (!f.index.length) return;
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(f.positions, 3));
+        g.setIndex(new THREE.BufferAttribute(f.index, 1));
+        routes.add(new THREE.Mesh(g, flatMat(d.color)));
       });
     }
     for (const p of pins) {

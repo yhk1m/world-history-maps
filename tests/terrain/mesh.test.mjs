@@ -47,3 +47,24 @@ test('projector: 중심은 원점, 동쪽은 +x, 남쪽은 +z', () => {
   assert.deepEqual(P(1, 1).map((x) => Math.round(x * 1e6) / 1e6), [0, 0]);
   assert.ok(P(2, 1)[0] > 0 && P(1, 0)[1] > 0);
 });
+import { flatArrow } from '../../assets/terrain/mesh.js';
+test('평평한 화살표: 몸통 띠 + 넓은 삼각형 머리, 끝점이 화살촉', () => {
+  const pts = [[0, 0, 0], [10, 0, 0], [20, 0, 0]]; // x 방향, 길이 20
+  const a = flatArrow(pts, 1, true);
+  const P = a.positions;
+  let maxX = -Infinity, maxHalfW = 0;
+  for (let i = 0; i < P.length; i += 3) { maxX = Math.max(maxX, P[i]); maxHalfW = Math.max(maxHalfW, Math.abs(P[i + 2])); }
+  assert.ok(Math.abs(maxX - 20) < 1e-6, `tip ${maxX}`);
+  assert.ok(Math.abs(maxHalfW - 1.3) < 1e-6, `head half width ${maxHalfW}`); // 머리 폭 = 몸통의 2.6배
+  assert.equal(a.index.length % 3, 0);
+  // 몸통 폭은 1: x=5 근처 꼭짓점의 |z| = 0.5
+  let shaft = 0; for (let i = 0; i < P.length; i += 3) if (P[i] < 15) shaft = Math.max(shaft, Math.abs(P[i + 2]));
+  assert.ok(Math.abs(shaft - 0.5) < 1e-6, `shaft ${shaft}`);
+});
+test('머리 없는 띠, 짧은 선은 머리를 줄인다', () => {
+  const b = flatArrow([[0, 0, 0], [10, 0, 0]], 1, false);
+  assert.equal(b.index.length, 6);
+  const c = flatArrow([[0, 0, 0], [2, 0, 0]], 1, true); // 머리 길이(3.2)보다 짧다
+  let maxX = -Infinity; for (let i = 0; i < c.positions.length; i += 3) maxX = Math.max(maxX, c.positions[i]);
+  assert.ok(Math.abs(maxX - 2) < 1e-6);
+});
